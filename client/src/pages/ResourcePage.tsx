@@ -1,10 +1,11 @@
 import { ChangeEvent, useEffect, useMemo, useState } from "react";
-import { Alert, Avatar, Box, Button, Checkbox, Dialog, DialogActions, DialogContent, DialogTitle, FormControl, InputLabel, List, ListItemIcon, ListItemText, MenuItem, Paper, Select, Stack, Tab, Table, TableBody, TableCell, TableHead, TableRow, Tabs, TextField, Typography } from "@mui/material";
+import { Alert, Avatar, Box, Button, Checkbox, Dialog, DialogActions, DialogContent, DialogTitle, FormControl, InputLabel, List, ListItemButton, ListItemIcon, ListItemText, MenuItem, Paper, Select, Stack, Tab, Table, TableBody, TableCell, TableHead, TableRow, Tabs, TextField, Typography } from "@mui/material";
 import AccessTimeOutlinedIcon from "@mui/icons-material/AccessTimeOutlined";
 import CampaignOutlinedIcon from "@mui/icons-material/CampaignOutlined";
 import MosqueOutlinedIcon from "@mui/icons-material/MosqueOutlined";
 import SettingsOutlinedIcon from "@mui/icons-material/SettingsOutlined";
 import TodayOutlinedIcon from "@mui/icons-material/TodayOutlined";
+import { useNavigate } from "react-router-dom";
 import { api, Paged, uploadImage } from "../api/client";
 import PlaceAutocomplete, { type PlaceOption } from "../components/PlaceAutocomplete";
 import RichTextHtmlEditor from "../components/RichTextHtmlEditor";
@@ -54,6 +55,7 @@ function hasCoordinates(row: Row) {
 }
 
 export default function ResourcePage({ resource }: { resource: string }) {
+  const navigate = useNavigate();
   const config = resources[resource];
   const [rows, setRows] = useState<Row[]>([]);
   const [total, setTotal] = useState(0);
@@ -204,7 +206,7 @@ export default function ResourcePage({ resource }: { resource: string }) {
           </Typography>
           <List disablePadding sx={{ display: "grid", gap: 1.25 }}>
             {[
-              { label: "Mosque Prayer Times", icon: <MosqueOutlinedIcon /> },
+              { label: "Mosque Prayer Times", icon: <MosqueOutlinedIcon />, path: "/prayer-times" },
               { label: "IQama Times", icon: <AccessTimeOutlinedIcon /> },
               { label: "Jummah Times", icon: <TodayOutlinedIcon /> },
               { label: "Announcements", icon: <CampaignOutlinedIcon /> }
@@ -213,19 +215,20 @@ export default function ResourcePage({ resource }: { resource: string }) {
                 component="li"
                 variant="outlined"
                 key={option.label}
-                sx={{
-                  alignItems: "center",
-                  display: "flex",
-                  listStyle: "none",
-                  minHeight: 64,
-                  px: 2,
-                  py: 1.25,
-                  borderLeft: 3,
-                  borderLeftColor: "primary.main"
-                }}
+                sx={{ listStyle: "none", overflow: "hidden", borderLeft: 3, borderLeftColor: "primary.main" }}
               >
-                <ListItemIcon sx={{ color: "primary.main", minWidth: 42 }}>{option.icon}</ListItemIcon>
-                <ListItemText primary={option.label} />
+                <ListItemButton
+                  disabled={!option.path}
+                  onClick={() => {
+                    if (!option.path || !settingsMosque) return;
+                    setSettingsMosque(null);
+                    navigate(`${option.path}?mosqueId=${settingsMosque.id}`);
+                  }}
+                  sx={{ minHeight: 64, px: 2, py: 1.25, "&.Mui-disabled": { opacity: 1 } }}
+                >
+                  <ListItemIcon sx={{ color: "primary.main", minWidth: 42 }}>{option.icon}</ListItemIcon>
+                  <ListItemText primary={option.label} />
+                </ListItemButton>
               </Paper>
             ))}
           </List>

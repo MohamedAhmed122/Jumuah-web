@@ -261,6 +261,7 @@ adminRouter.post("/mosques/:id/prayer-times/import", asyncHandler(async (req, re
 
   let created = 0;
   let updated = 0;
+  let unchanged = 0;
   for (const item of body.items) {
     const result = await MosquePrayerTime.updateOne(
       { mosqueId: id, date: item.date },
@@ -268,9 +269,10 @@ adminRouter.post("/mosques/:id/prayer-times/import", asyncHandler(async (req, re
       { upsert: true }
     );
     if (result.upsertedCount) created += 1;
-    else if (result.modifiedCount || result.matchedCount) updated += 1;
+    else if (result.modifiedCount) updated += 1;
+    else if (result.matchedCount) unchanged += 1;
   }
-  res.json({ created, updated, total: body.items.length });
+  res.json({ created, updated, unchanged, total: body.items.length });
 }));
 
 adminRouter.post("/quiz-questions/import", asyncHandler(async (req, res) => {
