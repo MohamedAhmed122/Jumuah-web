@@ -209,7 +209,7 @@ export default function ResourcePage({ resource }: { resource: string }) {
               { label: "Mosque Prayer Times", icon: <MosqueOutlinedIcon />, path: "/prayer-times" },
               { label: "IQama Times", icon: <AccessTimeOutlinedIcon />, path: "/iqama-times" },
               { label: "Jummah Times", icon: <TodayOutlinedIcon />, path: "/jummah-times" },
-              { label: "Announcements", icon: <CampaignOutlinedIcon /> }
+              { label: "Announcements", icon: <CampaignOutlinedIcon />, path: "/announcements" }
             ].map((option) => (
               <Paper
                 component="li"

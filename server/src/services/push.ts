@@ -10,16 +10,23 @@ function localizedText(value: string | Partial<Record<Lang, string>>, lang: Lang
   return value[lang] || value.en || "";
 }
 
+function notificationBody(html: string) {
+  return html.replace(/<[^>]*>/g, " ").replace(/&nbsp;/g, " ").replace(/\s+/g, " ").trim().slice(0, 180);
+}
+
 export async function sendAnnouncementPush(announcement: AnnouncementDocument & { _id: unknown }) {
-  const registrations = await PushRegistration.find({ isActive: true });
+  const registrations = await PushRegistration.find({
+    isActive: true,
+    mosqueIds: { $in: announcement.mosqueIds }
+  });
   const messages = registrations
     .filter((registration) => Expo.isExpoPushToken(registration.token))
     .map((registration) => ({
       to: registration.token,
       sound: "default" as const,
       title: localizedText(announcement.title, registration.lang),
-      body: localizedText(announcement.excerpt, registration.lang),
-      data: { type: "announcement", id: String(announcement._id) }
+      body: notificationBody(localizedText(announcement.descriptionHtml, registration.lang)),
+      data: { type: "announcement", id: String(announcement._id), mosqueIds: announcement.mosqueIds.map(String) }
     }))
     .filter((message) => message.title && message.body);
 

@@ -11,6 +11,7 @@ import { QuizQuestion } from "../models/QuizQuestion.js";
 import { requireAdmin, signAdminToken, type AdminRequest } from "../middleware/auth.js";
 import { upload, uploadUrl } from "../services/uploads.js";
 import { sendAnnouncementPush } from "../services/push.js";
+import { removeExpiredAnnouncements } from "../services/announcementMaintenance.js";
 import { asyncHandler, HttpError } from "../utils/http.js";
 import { dateOnlySchema, hhmmSchema, langSchema, objectIdSchema, prayerTimesSchema } from "../utils/validation.js";
 import { toJson, toJsonList } from "../utils/serialize.js";
@@ -97,15 +98,49 @@ const localizedOptionsSchema = z.object({
 
 const announcementSchema = z.object({
   title: localizedStringSchema,
-  excerpt: localizedStringSchema,
   image: z.string().min(1),
   descriptionHtml: localizedStringSchema,
+  mosqueIds: z.array(objectIdSchema).min(1),
   date: z.coerce.date(),
   eventDate: z.coerce.date().optional().nullable(),
-  locationId: objectIdSchema.optional().or(z.literal("")),
+  endDate: z.coerce.date().optional().nullable(),
+  locationType: z.enum(["mosque", "outside"]),
+  locationMosqueId: objectIdSchema.optional().or(z.literal("")),
+  outsideLocation: z.object({
+    address: z.string().min(1),
+    lat: z.coerce.number(),
+    lng: z.coerce.number()
+  }).optional().nullable(),
   status: z.enum(["draft", "published"]).default("draft"),
-  sendPushOnPublish: z.boolean().default(false)
+  sendPushOnPublish: z.boolean().default(false),
+  hideAfterEndDate: z.boolean().default(false),
+  deleteAfterEndDate: z.boolean().default(false),
+  isPinned: z.boolean().default(false)
+}).superRefine((announcement, context) => {
+  if (announcement.locationType === "mosque" && !announcement.locationMosqueId) {
+    context.addIssue({ code: z.ZodIssueCode.custom, message: "Select the event mosque", path: ["locationMosqueId"] });
+  }
+  if (announcement.locationType === "outside" && !announcement.outsideLocation) {
+    context.addIssue({ code: z.ZodIssueCode.custom, message: "Select an outside location", path: ["outsideLocation"] });
+  }
+  if ((announcement.hideAfterEndDate || announcement.deleteAfterEndDate) && !announcement.endDate) {
+    context.addIssue({ code: z.ZodIssueCode.custom, message: "End date is required for expiry", path: ["endDate"] });
+  }
+  if (announcement.eventDate && announcement.endDate && announcement.endDate < announcement.eventDate) {
+    context.addIssue({ code: z.ZodIssueCode.custom, message: "End date must be after the event date", path: ["endDate"] });
+  }
 });
+
+function announcementData(body: z.infer<typeof announcementSchema>) {
+  return {
+    ...body,
+    eventDate: body.eventDate || undefined,
+    endDate: body.endDate || undefined,
+    locationMosqueId: body.locationType === "mosque" ? body.locationMosqueId : undefined,
+    outsideLocation: body.locationType === "outside" ? body.outsideLocation : undefined,
+    hideAfterEndDate: body.deleteAfterEndDate ? false : body.hideAfterEndDate
+  };
+}
 
 const quizSchema = z.object({
   question: localizedStringSchema,
@@ -266,14 +301,51 @@ function crudRoutes(path: string, model: any, schema: z.ZodTypeAny, searchFields
 crudRoutes("/mosques", Mosque, mosqueSchema, ["name", "address"], { sortOrder: 1, name: 1 });
 crudRoutes("/mosque-prayer-times", MosquePrayerTime, prayerTimeSchema, ["date"], { date: 1 });
 crudRoutes("/halal-places", HalalPlace, halalPlaceSchema, ["name", "address", "city"], { sortOrder: 1, name: 1 });
-crudRoutes(
-  "/announcements",
-  Announcement,
-  announcementSchema.transform((body) => ({ ...body, eventDate: body.eventDate || undefined, locationId: body.locationId || undefined })),
-  ["title.en", "title.ru", "excerpt.en", "excerpt.ru"],
-  { date: -1 }
-);
 crudRoutes("/quiz-questions", QuizQuestion, quizSchema, ["question.en", "question.ru", "explanation.en", "explanation.ru"], { createdAt: -1 });
+
+adminRouter.get("/announcements", asyncHandler(async (req, res) => {
+  await removeExpiredAnnouncements();
+  const query = pageQuery.parse(req.query);
+  const filter: Record<string, unknown> = { ...textSearch(query.search, ["title.en", "title.ru"]) };
+  if (query.status) filter.status = query.status;
+  if (query.mosqueId) filter.mosqueIds = query.mosqueId;
+  res.json(await paged(Announcement, filter, req as AdminRequest, { isPinned: -1, createdAt: -1 }));
+}));
+
+adminRouter.post("/announcements", asyncHandler(async (req, res) => {
+  const item = await Announcement.create(announcementData(announcementSchema.parse(req.body)));
+  if (item.status === "published" && item.sendPushOnPublish) {
+    await sendAnnouncementPush(item);
+    item.pushSentAt = new Date();
+    await item.save();
+  }
+  res.status(201).json(toJson(item));
+}));
+
+adminRouter.put("/announcements/:id", asyncHandler(async (req, res) => {
+  const { id } = z.object({ id: objectIdSchema }).parse(req.params);
+  const previous = await Announcement.findById(id);
+  if (!previous) throw new HttpError(404, "Announcement not found");
+  const item = await Announcement.findByIdAndUpdate(
+    id,
+    announcementData(announcementSchema.parse(req.body)),
+    { new: true, runValidators: true }
+  );
+  if (!item) throw new HttpError(404, "Announcement not found");
+  if (item.status === "published" && item.sendPushOnPublish && !item.pushSentAt) {
+    await sendAnnouncementPush(item);
+    item.pushSentAt = new Date();
+    await item.save();
+  }
+  res.json(toJson(item));
+}));
+
+adminRouter.delete("/announcements/:id", asyncHandler(async (req, res) => {
+  const { id } = z.object({ id: objectIdSchema }).parse(req.params);
+  const item = await Announcement.findByIdAndDelete(id);
+  if (!item) throw new HttpError(404, "Announcement not found");
+  res.json(toJson(item));
+}));
 
 adminRouter.get("/mosques/:id/iqama-offsets", asyncHandler(async (req, res) => {
   const { id } = z.object({ id: objectIdSchema }).parse(req.params);

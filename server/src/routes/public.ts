@@ -11,6 +11,7 @@ import { QuizSeen } from "../models/QuizSeen.js";
 import { asyncHandler, HttpError } from "../utils/http.js";
 import { dateOnlySchema, langSchema, normalizeLang, objectIdSchema } from "../utils/validation.js";
 import { toJson, toJsonList } from "../utils/serialize.js";
+import { removeExpiredAnnouncements } from "../services/announcementMaintenance.js";
 
 export const publicRouter = Router();
 
@@ -35,7 +36,6 @@ function serializeAnnouncement(doc: unknown, lang: Lang) {
   return {
     ...item,
     title: localizedText(item.title as LocalizedStringLike, lang),
-    excerpt: localizedText(item.excerpt as LocalizedStringLike, lang),
     descriptionHtml: localizedText(item.descriptionHtml as LocalizedStringLike, lang),
     lang
   };
@@ -81,15 +81,37 @@ publicRouter.get("/locations/halal", asyncHandler(async (_req, res) => {
 }));
 
 publicRouter.get("/community/announcements", asyncHandler(async (req, res) => {
-  const lang = normalizeLang(req.query.lang);
-  const announcements = await Announcement.find({ status: "published" }).sort({ date: -1 });
+  const query = z.object({ mosqueId: objectIdSchema, lang: langSchema.optional() }).parse(req.query);
+  const lang = normalizeLang(query.lang);
+  const now = new Date();
+  await removeExpiredAnnouncements();
+  const announcements = await Announcement.find({
+    status: "published",
+    mosqueIds: query.mosqueId,
+    $or: [
+      { hideAfterEndDate: { $ne: true } },
+      { endDate: { $gt: now } },
+      { endDate: { $exists: false } }
+    ]
+  }).sort({ isPinned: -1, createdAt: -1 });
   res.json(announcements.map((announcement) => serializeAnnouncement(announcement, lang)));
 }));
 
 publicRouter.get("/community/announcements/:id", asyncHandler(async (req, res) => {
   const { id } = z.object({ id: objectIdSchema }).parse(req.params);
-  const lang = normalizeLang(req.query.lang);
-  const announcement = await Announcement.findOne({ _id: id, status: "published" });
+  const query = z.object({ mosqueId: objectIdSchema, lang: langSchema.optional() }).parse(req.query);
+  const lang = normalizeLang(query.lang);
+  await removeExpiredAnnouncements();
+  const announcement = await Announcement.findOne({
+    _id: id,
+    status: "published",
+    mosqueIds: query.mosqueId,
+    $or: [
+      { hideAfterEndDate: { $ne: true } },
+      { endDate: { $gt: new Date() } },
+      { endDate: { $exists: false } }
+    ]
+  });
   if (!announcement) throw new HttpError(404, "Announcement not found");
   res.json(serializeAnnouncement(announcement, lang));
 }));
@@ -128,12 +150,16 @@ publicRouter.post("/push/register", asyncHandler(async (req, res) => {
   const body = z.object({
     token: z.string().min(1),
     deviceId: z.string().min(1),
-    lang: langSchema
+    lang: langSchema,
+    mosqueId: objectIdSchema.optional(),
+    mosqueIds: z.array(objectIdSchema).optional()
   }).parse(req.body);
+
+  const mosqueIds = body.mosqueIds?.length ? body.mosqueIds : body.mosqueId ? [body.mosqueId] : [];
 
   await PushRegistration.findOneAndUpdate(
     { deviceId: body.deviceId },
-    { ...body, isActive: true },
+    { token: body.token, deviceId: body.deviceId, lang: body.lang, mosqueIds, isActive: true },
     { upsert: true, new: true, setDefaultsOnInsert: true }
   );
 

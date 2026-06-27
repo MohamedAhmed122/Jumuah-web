@@ -80,33 +80,6 @@ export const resources: Record<string, ResourceConfig> = {
     ],
     filters: [{ name: "category", label: "Category", type: "select", options: ["restaurant", "grocery", "fast_food", "supermarket_halal"] }]
   },
-  announcements: {
-    title: "Announcements",
-    endpoint: "/api/admin/announcements",
-    columns: ["image", "title", "status", "locationId", "date", "eventDate"],
-    defaults: {
-      title: { en: "", ru: "" },
-      excerpt: { en: "", ru: "" },
-      descriptionHtml: { en: "<p></p>", ru: "<p></p>" },
-      status: "draft",
-      sendPushOnPublish: false,
-      date: new Date().toISOString()
-    },
-    fields: [
-      { name: "image", label: "Image", type: "image", required: true },
-      { name: "status", label: "Status", type: "select", options: ["draft", "published"], required: true },
-      { name: "title", label: "Title", type: "localizedText", required: true },
-      { name: "excerpt", label: "Excerpt", type: "localizedTextarea", required: true },
-      { name: "descriptionHtml", label: "Description", type: "localizedRichtext", required: true },
-      { name: "date", label: "Date", type: "datetime", required: true },
-      { name: "eventDate", label: "Event date", type: "datetime" },
-      { name: "locationId", label: "Location", type: "reference", source: "mosques" },
-      { name: "sendPushOnPublish", label: "Send push on publish", type: "boolean" }
-    ],
-    filters: [
-      { name: "status", label: "Status", type: "select", options: ["draft", "published"] }
-    ]
-  },
   "quiz-questions": {
     title: "Quiz Questions",
     endpoint: "/api/admin/quiz-questions",
