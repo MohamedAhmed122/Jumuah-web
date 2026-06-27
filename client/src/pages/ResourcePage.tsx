@@ -1,5 +1,10 @@
 import { ChangeEvent, useEffect, useMemo, useState } from "react";
-import { Alert, Avatar, Box, Button, Checkbox, Dialog, DialogActions, DialogContent, DialogTitle, FormControl, InputLabel, MenuItem, Paper, Select, Stack, Tab, Table, TableBody, TableCell, TableHead, TableRow, Tabs, TextField, Typography } from "@mui/material";
+import { Alert, Avatar, Box, Button, Checkbox, Dialog, DialogActions, DialogContent, DialogTitle, FormControl, InputLabel, List, ListItemIcon, ListItemText, MenuItem, Paper, Select, Stack, Tab, Table, TableBody, TableCell, TableHead, TableRow, Tabs, TextField, Typography } from "@mui/material";
+import AccessTimeOutlinedIcon from "@mui/icons-material/AccessTimeOutlined";
+import CampaignOutlinedIcon from "@mui/icons-material/CampaignOutlined";
+import MosqueOutlinedIcon from "@mui/icons-material/MosqueOutlined";
+import SettingsOutlinedIcon from "@mui/icons-material/SettingsOutlined";
+import TodayOutlinedIcon from "@mui/icons-material/TodayOutlined";
 import { api, Paged, uploadImage } from "../api/client";
 import PlaceAutocomplete, { type PlaceOption } from "../components/PlaceAutocomplete";
 import RichTextHtmlEditor from "../components/RichTextHtmlEditor";
@@ -55,6 +60,7 @@ export default function ResourcePage({ resource }: { resource: string }) {
   const [search, setSearch] = useState("");
   const [filters, setFilters] = useState<Record<string, string>>({});
   const [editing, setEditing] = useState<Row | null>(null);
+  const [settingsMosque, setSettingsMosque] = useState<Row | null>(null);
   const [error, setError] = useState("");
   const [referenceOptions, setReferenceOptions] = useState<ReferenceOptions>({});
   const [activeLang, setActiveLang] = useState<Lang>("en");
@@ -169,7 +175,15 @@ export default function ResourcePage({ resource }: { resource: string }) {
                   </TableCell>
                 ))}
                 <TableCell align="right">
-                  {resource === "mosques" && <Button size="small" href={`/prayer-times?mosqueId=${row.id}`}>Prayer times</Button>}
+                  {resource === "mosques" && (
+                    <Button
+                      size="small"
+                      startIcon={<SettingsOutlinedIcon />}
+                      onClick={() => setSettingsMosque(row)}
+                    >
+                      Settings
+                    </Button>
+                  )}
                   <Button size="small" onClick={() => {
                     setActiveLang("en");
                     setEditing(row);
@@ -181,6 +195,45 @@ export default function ResourcePage({ resource }: { resource: string }) {
           </TableBody>
         </Table>
       </Paper>
+
+      <Dialog open={Boolean(settingsMosque)} onClose={() => setSettingsMosque(null)} maxWidth="sm" fullWidth>
+        <DialogTitle sx={{ pb: 1 }}>Mosque settings</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            {settingsMosque?.name ?? "Mosque"}
+          </Typography>
+          <List disablePadding sx={{ display: "grid", gap: 1.25 }}>
+            {[
+              { label: "Mosque Prayer Times", icon: <MosqueOutlinedIcon /> },
+              { label: "IQama Times", icon: <AccessTimeOutlinedIcon /> },
+              { label: "Jummah Times", icon: <TodayOutlinedIcon /> },
+              { label: "Announcements", icon: <CampaignOutlinedIcon /> }
+            ].map((option) => (
+              <Paper
+                component="li"
+                variant="outlined"
+                key={option.label}
+                sx={{
+                  alignItems: "center",
+                  display: "flex",
+                  listStyle: "none",
+                  minHeight: 64,
+                  px: 2,
+                  py: 1.25,
+                  borderLeft: 3,
+                  borderLeftColor: "primary.main"
+                }}
+              >
+                <ListItemIcon sx={{ color: "primary.main", minWidth: 42 }}>{option.icon}</ListItemIcon>
+                <ListItemText primary={option.label} />
+              </Paper>
+            ))}
+          </List>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setSettingsMosque(null)}>Close</Button>
+        </DialogActions>
+      </Dialog>
 
       <Dialog open={Boolean(editing)} onClose={() => setEditing(null)} maxWidth="md" fullWidth>
         <DialogTitle>{editing?.id ? "Edit" : "Create"} {config.title}</DialogTitle>
