@@ -1,0 +1,25 @@
+{
+  "name": "jumuah-web",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently \"npm run dev --workspace server\" \"npm run dev --workspace client\"",
+    "build": "npm run build --workspace server && npm run build --workspace client",
+    "typecheck": "npm run typecheck --workspace server && npm run typecheck --workspace client",
+    "seed:admin": "npm run seed:admin --workspace server",
+    "seed:locations": "npm run seed:locations --workspace server",
+    "seed:quiz": "npm run seed:quiz --workspace server"
+  },
+  "workspaces": [
+    "server",
+    "client"
+  ],
+  "overrides": {
+    "draft-js": {
+      "immutable": "3.8.3"
+    },
+    "immutable": "3.8.3"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}
