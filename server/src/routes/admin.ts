@@ -12,7 +12,7 @@ import { requireAdmin, signAdminToken, type AdminRequest } from "../middleware/a
 import { upload, uploadUrl } from "../services/uploads.js";
 import { sendAnnouncementPush } from "../services/push.js";
 import { asyncHandler, HttpError } from "../utils/http.js";
-import { dateOnlySchema, langSchema, objectIdSchema, prayerTimesSchema } from "../utils/validation.js";
+import { dateOnlySchema, hhmmSchema, langSchema, objectIdSchema, prayerTimesSchema } from "../utils/validation.js";
 import { toJson, toJsonList } from "../utils/serialize.js";
 
 export const adminRouter = Router();
@@ -54,6 +54,20 @@ const iqamaOffsetsSchema = z.object({
   asr: z.coerce.number().int().min(0).max(180),
   maghrib: z.coerce.number().int().min(0).max(180),
   isha: z.coerce.number().int().min(0).max(180)
+});
+
+const jummahScheduleSchema = z.object({
+  allFridays: z.boolean(),
+  startDate: dateOnlySchema.optional().or(z.literal("")),
+  endDate: dateOnlySchema.optional().or(z.literal("")),
+  times: z.array(hhmmSchema).min(1).max(3)
+}).superRefine((schedule, context) => {
+  if (!schedule.allFridays && (!schedule.startDate || !schedule.endDate)) {
+    context.addIssue({ code: z.ZodIssueCode.custom, message: "Start and end dates are required", path: ["startDate"] });
+  }
+  if (!schedule.allFridays && schedule.startDate && schedule.endDate && schedule.startDate > schedule.endDate) {
+    context.addIssue({ code: z.ZodIssueCode.custom, message: "Start date must be before end date", path: ["endDate"] });
+  }
 });
 
 const halalPlaceSchema = z.object({
@@ -278,6 +292,34 @@ adminRouter.put("/mosques/:id/iqama-offsets", asyncHandler(async (req, res) => {
   ).select("iqamaOffsets");
   if (!mosque) throw new HttpError(404, "Mosque not found");
   res.json({ mosqueId: id, iqamaOffsets: mosque.iqamaOffsets });
+}));
+
+adminRouter.get("/mosques/:id/jummah-times", asyncHandler(async (req, res) => {
+  const { id } = z.object({ id: objectIdSchema }).parse(req.params);
+  const mosque = await Mosque.findById(id).select("jummahSchedule jumuahTimes");
+  if (!mosque) throw new HttpError(404, "Mosque not found");
+  const legacyTimes = [mosque.jumuahTimes?.first, mosque.jumuahTimes?.second].filter(Boolean) as string[];
+  res.json({
+    mosqueId: id,
+    jummahSchedule: mosque.jummahSchedule ?? (legacyTimes.length ? { allFridays: true, times: legacyTimes } : null)
+  });
+}));
+
+adminRouter.put("/mosques/:id/jummah-times", asyncHandler(async (req, res) => {
+  const { id } = z.object({ id: objectIdSchema }).parse(req.params);
+  const body = jummahScheduleSchema.parse(req.body);
+  const jummahSchedule = {
+    allFridays: body.allFridays,
+    times: body.times,
+    ...(body.allFridays ? {} : { startDate: body.startDate, endDate: body.endDate })
+  };
+  const mosque = await Mosque.findByIdAndUpdate(
+    id,
+    { $set: { jummahSchedule } },
+    { new: true, runValidators: true }
+  ).select("jummahSchedule");
+  if (!mosque) throw new HttpError(404, "Mosque not found");
+  res.json({ mosqueId: id, jummahSchedule: mosque.jummahSchedule });
 }));
 
 adminRouter.post("/mosques/:id/prayer-times/import", asyncHandler(async (req, res) => {

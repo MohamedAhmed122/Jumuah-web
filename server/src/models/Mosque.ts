@@ -19,6 +19,12 @@ export interface MosqueDocument {
     maghrib: number;
     isha: number;
   };
+  jummahSchedule?: {
+    allFridays: boolean;
+    startDate?: string;
+    endDate?: string;
+    times: string[];
+  };
   isActive: boolean;
   sortOrder?: number;
   createdAt: Date;
@@ -32,6 +38,23 @@ const iqamaOffsetsSchema = new Schema(
     asr: { type: Number, required: true, min: 0, max: 180 },
     maghrib: { type: Number, required: true, min: 0, max: 180 },
     isha: { type: Number, required: true, min: 0, max: 180 }
+  },
+  { _id: false }
+);
+
+const jummahScheduleSchema = new Schema(
+  {
+    allFridays: { type: Boolean, required: true },
+    startDate: String,
+    endDate: String,
+    times: {
+      type: [String],
+      required: true,
+      validate: {
+        validator: (times: string[]) => times.length >= 1 && times.length <= 3,
+        message: "Jummah schedule requires one to three times"
+      }
+    }
   },
   { _id: false }
 );
@@ -50,6 +73,7 @@ const mosqueSchema = new Schema<MosqueDocument>(
       second: String
     },
     iqamaOffsets: { type: iqamaOffsetsSchema, default: undefined },
+    jummahSchedule: { type: jummahScheduleSchema, default: undefined },
     isActive: { type: Boolean, default: true, index: true },
     sortOrder: { type: Number, default: 0 }
   },

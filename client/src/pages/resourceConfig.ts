@@ -49,16 +49,14 @@ export const resources: Record<string, ResourceConfig> = {
   mosques: {
     title: "Mosques",
     endpoint: "/api/admin/mosques",
-    columns: ["image", "name", "address", "phone", "hours", "jumuahTimes.first", "jumuahTimes.second", "isActive"],
-    defaults: { isActive: true, lat: 54.6872, lng: 25.2797, jumuahTimes: { first: "", second: "" } },
+    columns: ["image", "name", "address", "phone", "hours", "isActive"],
+    defaults: { isActive: true, lat: 54.6872, lng: 25.2797 },
     fields: [
       { name: "image", label: "Image", type: "image" },
       { name: "name", label: "Name", type: "text", required: true },
       { name: "address", label: "Address", type: "placeAutocomplete", required: true },
       { name: "phone", label: "Phone", type: "text" },
       { name: "hours", label: "Hours HH:mm-HH:mm", type: "text" },
-      { name: "jumuahTimes.first", label: "First Jumu'ah", type: "text" },
-      { name: "jumuahTimes.second", label: "Second Jumu'ah", type: "text" },
       { name: "sortOrder", label: "Sort order", type: "number" },
       { name: "isActive", label: "Active", type: "boolean" }
     ]
