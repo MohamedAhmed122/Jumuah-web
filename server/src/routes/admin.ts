@@ -48,6 +48,14 @@ const prayerTimeSchema = z.object({
   times: prayerTimesSchema
 });
 
+const iqamaOffsetsSchema = z.object({
+  fajr: z.coerce.number().int().min(0).max(180),
+  dhuhr: z.coerce.number().int().min(0).max(180),
+  asr: z.coerce.number().int().min(0).max(180),
+  maghrib: z.coerce.number().int().min(0).max(180),
+  isha: z.coerce.number().int().min(0).max(180)
+});
+
 const halalPlaceSchema = z.object({
   name: z.string().min(1),
   category: z.enum(["restaurant", "grocery", "fast_food", "supermarket_halal"]),
@@ -252,6 +260,25 @@ crudRoutes(
   { date: -1 }
 );
 crudRoutes("/quiz-questions", QuizQuestion, quizSchema, ["question.en", "question.ru", "explanation.en", "explanation.ru"], { createdAt: -1 });
+
+adminRouter.get("/mosques/:id/iqama-offsets", asyncHandler(async (req, res) => {
+  const { id } = z.object({ id: objectIdSchema }).parse(req.params);
+  const mosque = await Mosque.findById(id).select("iqamaOffsets");
+  if (!mosque) throw new HttpError(404, "Mosque not found");
+  res.json({ mosqueId: id, iqamaOffsets: mosque.iqamaOffsets ?? null });
+}));
+
+adminRouter.put("/mosques/:id/iqama-offsets", asyncHandler(async (req, res) => {
+  const { id } = z.object({ id: objectIdSchema }).parse(req.params);
+  const iqamaOffsets = iqamaOffsetsSchema.parse(req.body);
+  const mosque = await Mosque.findByIdAndUpdate(
+    id,
+    { $set: { iqamaOffsets } },
+    { new: true, runValidators: true }
+  ).select("iqamaOffsets");
+  if (!mosque) throw new HttpError(404, "Mosque not found");
+  res.json({ mosqueId: id, iqamaOffsets: mosque.iqamaOffsets });
+}));
 
 adminRouter.post("/mosques/:id/prayer-times/import", asyncHandler(async (req, res) => {
   const { id } = z.object({ id: objectIdSchema }).parse(req.params);

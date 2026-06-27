@@ -12,11 +12,29 @@ export interface MosqueDocument {
     first?: string;
     second?: string;
   };
+  iqamaOffsets?: {
+    fajr: number;
+    dhuhr: number;
+    asr: number;
+    maghrib: number;
+    isha: number;
+  };
   isActive: boolean;
   sortOrder?: number;
   createdAt: Date;
   updatedAt: Date;
 }
+
+const iqamaOffsetsSchema = new Schema(
+  {
+    fajr: { type: Number, required: true, min: 0, max: 180 },
+    dhuhr: { type: Number, required: true, min: 0, max: 180 },
+    asr: { type: Number, required: true, min: 0, max: 180 },
+    maghrib: { type: Number, required: true, min: 0, max: 180 },
+    isha: { type: Number, required: true, min: 0, max: 180 }
+  },
+  { _id: false }
+);
 
 const mosqueSchema = new Schema<MosqueDocument>(
   {
@@ -31,6 +49,7 @@ const mosqueSchema = new Schema<MosqueDocument>(
       first: String,
       second: String
     },
+    iqamaOffsets: { type: iqamaOffsetsSchema, default: undefined },
     isActive: { type: Boolean, default: true, index: true },
     sortOrder: { type: Number, default: 0 }
   },

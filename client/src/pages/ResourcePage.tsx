@@ -207,7 +207,7 @@ export default function ResourcePage({ resource }: { resource: string }) {
           <List disablePadding sx={{ display: "grid", gap: 1.25 }}>
             {[
               { label: "Mosque Prayer Times", icon: <MosqueOutlinedIcon />, path: "/prayer-times" },
-              { label: "IQama Times", icon: <AccessTimeOutlinedIcon /> },
+              { label: "IQama Times", icon: <AccessTimeOutlinedIcon />, path: "/iqama-times" },
               { label: "Jummah Times", icon: <TodayOutlinedIcon /> },
               { label: "Announcements", icon: <CampaignOutlinedIcon /> }
             ].map((option) => (
