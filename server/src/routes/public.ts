@@ -87,9 +87,28 @@ publicRouter.get("/locations/mosques/:id/prayer-times", asyncHandler(async (req,
   res.json(toJsonList(items));
 }));
 
-publicRouter.get("/locations/halal", asyncHandler(async (_req, res) => {
-  const places = await HalalPlace.find({ isActive: true }).sort({ sortOrder: 1, name: 1 });
+publicRouter.get("/locations/halal", asyncHandler(async (req, res) => {
+  const query = z.object({
+    category: z.enum(["restaurant", "grocery", "fast_food", "supermarket_halal"]).optional(),
+    foodCategory: z.string().trim().min(1).optional(),
+    country: z.string().trim().min(1).optional(),
+    city: z.string().trim().min(1).optional()
+  }).parse(req.query);
+  const filter: Record<string, unknown> = { isActive: true };
+  if (query.category) filter.category = query.category;
+  if (query.foodCategory) filter.foodCategories = query.foodCategory;
+  if (query.country) filter.country = query.country;
+  if (query.city) filter.city = query.city;
+  const places = await HalalPlace.find(filter).sort({ sortOrder: 1, name: 1 });
   res.json(toJsonList(places));
+}));
+
+publicRouter.get("/locations/halal/categories", asyncHandler(async (_req, res) => {
+  const categories = await HalalPlace.distinct("foodCategories", {
+    isActive: true,
+    category: "restaurant"
+  });
+  res.json(categories.filter(Boolean).sort((a, b) => a.localeCompare(b)));
 }));
 
 publicRouter.get("/community/announcements", asyncHandler(async (req, res) => {

@@ -25,6 +25,9 @@ const pageQuery = z.object({
   search: z.string().optional(),
   lang: langSchema.optional(),
   category: z.string().optional(),
+  foodCategory: z.string().optional(),
+  country: z.string().optional(),
+  city: z.string().optional(),
   status: z.string().optional(),
   mosqueId: objectIdSchema.optional(),
   from: dateOnlySchema.optional(),
@@ -132,6 +135,10 @@ async function recordNotificationDelivery(notification: InstanceType<typeof Noti
 const halalPlaceSchema = z.object({
   name: z.string().min(1),
   category: z.enum(["restaurant", "grocery", "fast_food", "supermarket_halal"]),
+  foodCategories: z.array(z.string().trim().min(1).max(60)).max(20).optional().default([]),
+  averageMealCost: z.preprocess((value) => value === "" || value == null ? undefined : value, z.coerce.number().min(0).max(10000).optional()),
+  promoCode: z.string().trim().max(80).optional().or(z.literal("")),
+  discountPercent: z.preprocess((value) => value === "" || value == null ? undefined : value, z.coerce.number().min(0).max(100).optional()),
   address: z.string().min(1),
   phone: z.string().optional().or(z.literal("")),
   hours: z.string().optional().or(z.literal("")),
@@ -139,10 +146,18 @@ const halalPlaceSchema = z.object({
   descriptionHtml: z.string().min(1),
   lat: z.coerce.number(),
   lng: z.coerce.number(),
-  city: z.string().optional().or(z.literal("")),
+  country: z.string().trim().min(1).default("Lithuania"),
+  city: z.string().trim().min(1),
   isActive: z.boolean().default(true),
   sortOrder: z.coerce.number().optional()
-});
+}).transform((place) => ({
+  ...place,
+  foodCategories: place.category === "restaurant"
+    ? [...new Map(place.foodCategories.map((category) => [category.toLocaleLowerCase(), category])).values()]
+    : [],
+  averageMealCost: place.category === "restaurant" ? place.averageMealCost : undefined,
+  promoCode: place.promoCode || undefined
+}));
 
 const localizedOptionsSchema = z.object({
   en: z.array(z.string().min(1)).length(4),
@@ -306,6 +321,9 @@ function crudRoutes(path: string, model: any, schema: z.ZodTypeAny, searchFields
     const query = pageQuery.parse(req.query);
     const filter: Record<string, unknown> = { ...textSearch(query.search, searchFields) };
     if (query.category) filter.category = query.category;
+    if (query.foodCategory) filter.foodCategories = query.foodCategory;
+    if (query.country) filter.country = query.country;
+    if (query.city) filter.city = query.city;
     if (query.status) filter.status = query.status;
     if (query.mosqueId) filter.mosqueId = query.mosqueId;
     if (query.from || query.to) filter.date = { ...(query.from ? { $gte: query.from } : {}), ...(query.to ? { $lte: query.to } : {}) };

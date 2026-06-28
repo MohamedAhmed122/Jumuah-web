@@ -1,5 +1,5 @@
 import { ChangeEvent, useEffect, useMemo, useState } from "react";
-import { Alert, Avatar, Box, Button, Checkbox, Dialog, DialogActions, DialogContent, DialogTitle, FormControl, InputLabel, List, ListItemButton, ListItemIcon, ListItemText, MenuItem, Paper, Select, Stack, Tab, Table, TableBody, TableCell, TableHead, TableRow, Tabs, TextField, Typography } from "@mui/material";
+import { Alert, Autocomplete, Avatar, Box, Button, Checkbox, Chip, Dialog, DialogActions, DialogContent, DialogTitle, FormControl, InputLabel, List, ListItemButton, ListItemIcon, ListItemText, MenuItem, Paper, Select, Stack, Tab, Table, TableBody, TableCell, TableHead, TableRow, Tabs, TextField, Typography } from "@mui/material";
 import AccessTimeOutlinedIcon from "@mui/icons-material/AccessTimeOutlined";
 import CampaignOutlinedIcon from "@mui/icons-material/CampaignOutlined";
 import MosqueOutlinedIcon from "@mui/icons-material/MosqueOutlined";
@@ -39,10 +39,14 @@ function setValue(object: Row, path: string, value: unknown) {
 function renderCell(row: Row, column: string) {
   const value = getValue(row, column);
   if (column === "image") return typeof value === "string" && value ? <Avatar src={value} variant="rounded" /> : "-";
+  if (value == null || value === "") return "-";
   if (typeof value === "boolean") return value ? "Yes" : "No";
+  if (Array.isArray(value)) return value.length ? value.join(", ") : "-";
+  if (column === "averageMealCost" && Number.isFinite(Number(value))) return `€${Number(value).toFixed(2)}`;
+  if (column === "discountPercent" && Number.isFinite(Number(value))) return `${value}%`;
   if (column.toLowerCase().includes("date") && (typeof value === "string" || typeof value === "number")) return new Date(value).toLocaleString();
   if (value && typeof value === "object" && !Array.isArray(value)) return value.en || value.ru || "-";
-  return value == null ? "-" : String(value);
+  return String(value);
 }
 
 function renderReferenceCell(value: unknown, options?: Array<{ value: string; label: string }>) {
@@ -250,18 +254,22 @@ export default function ResourcePage({ resource }: { resource: string }) {
                 {languages.map((language) => <Tab key={language.value} value={language.value} label={language.label} />)}
               </Tabs>
             )}
-            {config.fields.map((field) => editing && (
-              <FieldEditor
-                key={field.name}
-                field={field}
-                activeLang={activeLang}
-                options={field.source ? referenceOptions[field.source] : undefined}
-                row={editing}
-                value={getValue(editing, field.name)}
-                onChange={(value) => setEditing(setValue(editing, field.name, value))}
-                onPatch={(patch) => setEditing({ ...editing, ...patch })}
-              />
-            ))}
+            {config.fields.map((field) => {
+              if (!editing) return null;
+              if (field.showWhen && getValue(editing, field.showWhen.field) !== field.showWhen.equals) return null;
+              return (
+                <FieldEditor
+                  key={field.name}
+                  field={field}
+                  activeLang={activeLang}
+                  options={field.source ? referenceOptions[field.source] : undefined}
+                  row={editing}
+                  value={getValue(editing, field.name)}
+                  onChange={(value) => setEditing(setValue(editing, field.name, value))}
+                  onPatch={(patch) => setEditing({ ...editing, ...patch })}
+                />
+              );
+            })}
           </Stack>
         </DialogContent>
         <DialogActions>
@@ -306,6 +314,55 @@ function FieldEditor({
           {field.options?.map((option) => <MenuItem value={option} key={option}>{option}</MenuItem>)}
         </Select>
       </FormControl>
+    );
+  }
+  if (field.type === "tags") {
+    return (
+      <Autocomplete
+        multiple
+        freeSolo
+        options={field.options ?? []}
+        value={Array.isArray(value) ? value : []}
+        onChange={(_event, nextValue) => {
+          const normalized = [...new Map(
+            nextValue
+              .map((item) => String(item).trim())
+              .filter(Boolean)
+              .map((item) => [item.toLocaleLowerCase(), item])
+          ).values()];
+          onChange(normalized);
+        }}
+        renderTags={(tagValue, getTagProps) => tagValue.map((option, index) => (
+          <Chip {...getTagProps({ index })} key={`${option}-${index}`} label={option} color="primary" variant="outlined" />
+        ))}
+        renderInput={(params) => (
+          <TextField
+            {...params}
+            label={field.label}
+            placeholder="Choose or type a category, then press Enter"
+            helperText="Add every food style customers can use as a filter in the app."
+          />
+        )}
+      />
+    );
+  }
+  if (field.type === "searchableSelect") {
+    return (
+      <Autocomplete
+        freeSolo
+        options={field.options ?? []}
+        value={value ?? ""}
+        onChange={(_event, nextValue) => onChange(nextValue ?? "")}
+        onInputChange={(_event, nextValue) => onChange(nextValue)}
+        renderInput={(params) => (
+          <TextField
+            {...params}
+            label={field.label}
+            required={field.required}
+            helperText="Search the list or type a Lithuanian city that is not included."
+          />
+        )}
+      />
     );
   }
   if (field.type === "reference") {
@@ -412,12 +469,13 @@ function FieldEditor({
     <TextField
       label={field.label}
       value={value ?? ""}
-      onChange={(event) => onChange(field.type === "number" ? Number(event.target.value) : event.target.value)}
+      onChange={(event) => onChange(field.type === "number" ? (event.target.value === "" ? "" : Number(event.target.value)) : event.target.value)}
       required={field.required}
       type={field.type === "datetime" ? "datetime-local" : field.type === "password" ? "password" : field.type === "number" ? "number" : "text"}
       multiline={field.type === "textarea"}
       minRows={field.type === "textarea" ? 4 : undefined}
       InputLabelProps={field.type === "datetime" ? { shrink: true } : undefined}
+      inputProps={field.type === "number" ? { min: field.min, max: field.max, step: field.step } : undefined}
       fullWidth
     />
   );
