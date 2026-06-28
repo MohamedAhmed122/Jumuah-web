@@ -6,11 +6,12 @@ import { Announcement } from "../models/Announcement.js";
 import { HalalPlace } from "../models/HalalPlace.js";
 import { Mosque } from "../models/Mosque.js";
 import { MosquePrayerTime } from "../models/MosquePrayerTime.js";
+import { Notification } from "../models/Notification.js";
 import { PushRegistration } from "../models/PushRegistration.js";
 import { QuizQuestion } from "../models/QuizQuestion.js";
 import { requireAdmin, signAdminToken, type AdminRequest } from "../middleware/auth.js";
 import { upload, uploadUrl } from "../services/uploads.js";
-import { sendAnnouncementPush } from "../services/push.js";
+import { sendAnnouncementPush, sendNotificationPush } from "../services/push.js";
 import { removeExpiredAnnouncements } from "../services/announcementMaintenance.js";
 import { asyncHandler, HttpError } from "../utils/http.js";
 import { dateOnlySchema, hhmmSchema, langSchema, objectIdSchema, prayerTimesSchema } from "../utils/validation.js";
@@ -71,6 +72,63 @@ const jummahScheduleSchema = z.object({
   }
 });
 
+const localizedStringSchema = z.object({
+  en: z.string().min(1),
+  ru: z.string().min(1)
+});
+
+const notificationScreenSchema = z.enum(["main", "community", "settings", "notifications"]);
+const notificationWeekdaySchema = z.enum(["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]);
+const notificationSchema = z.object({
+  title: localizedStringSchema,
+  description: localizedStringSchema,
+  mosqueIds: z.array(objectIdSchema).min(1),
+  screen: notificationScreenSchema.optional().or(z.literal("")),
+  startsAt: z.coerce.date().optional().nullable(),
+  endsAt: z.coerce.date().optional().nullable(),
+  isDismissLocked: z.boolean().default(false),
+  repeatEnabled: z.boolean().default(false),
+  repeatDays: z.array(notificationWeekdaySchema).default([]),
+  repeatTime: hhmmSchema.optional().or(z.literal("")),
+  timezone: z.string().default("Europe/Vilnius"),
+  isActive: z.boolean().default(true)
+}).superRefine((notification, context) => {
+  if (Boolean(notification.startsAt) !== Boolean(notification.endsAt)) {
+    context.addIssue({ code: z.ZodIssueCode.custom, message: "Notification period requires both start and end", path: ["endsAt"] });
+  }
+  if (notification.startsAt && notification.endsAt && notification.endsAt <= notification.startsAt) {
+    context.addIssue({ code: z.ZodIssueCode.custom, message: "End must be after start", path: ["endsAt"] });
+  }
+  if (notification.isDismissLocked && (!notification.screen || !notification.startsAt || !notification.endsAt)) {
+    context.addIssue({ code: z.ZodIssueCode.custom, message: "Locked messages require a screen and notification period", path: ["isDismissLocked"] });
+  }
+  if (notification.repeatEnabled && (!notification.startsAt || !notification.endsAt || !notification.repeatTime || notification.repeatDays.length === 0)) {
+    context.addIssue({ code: z.ZodIssueCode.custom, message: "Repeating notifications require a period, time and weekday", path: ["repeatEnabled"] });
+  }
+});
+
+function notificationData(body: z.infer<typeof notificationSchema>) {
+  return {
+    ...body,
+    screen: body.screen || undefined,
+    startsAt: body.startsAt || undefined,
+    endsAt: body.endsAt || undefined,
+    repeatDays: body.repeatEnabled ? body.repeatDays : [],
+    repeatTime: body.repeatEnabled ? body.repeatTime : undefined,
+    timezone: "Europe/Vilnius"
+  };
+}
+
+async function recordNotificationDelivery(notification: InstanceType<typeof Notification>) {
+  const recipients = await sendNotificationPush(notification);
+  const sentAt = new Date();
+  notification.firstSentAt ??= sentAt;
+  notification.lastSentAt = sentAt;
+  notification.sendCount += 1;
+  await notification.save();
+  return recipients;
+}
+
 const halalPlaceSchema = z.object({
   name: z.string().min(1),
   category: z.enum(["restaurant", "grocery", "fast_food", "supermarket_halal"]),
@@ -84,11 +142,6 @@ const halalPlaceSchema = z.object({
   city: z.string().optional().or(z.literal("")),
   isActive: z.boolean().default(true),
   sortOrder: z.coerce.number().optional()
-});
-
-const localizedStringSchema = z.object({
-  en: z.string().min(1),
-  ru: z.string().min(1)
 });
 
 const localizedOptionsSchema = z.object({
@@ -345,6 +398,39 @@ adminRouter.delete("/announcements/:id", asyncHandler(async (req, res) => {
   const item = await Announcement.findByIdAndDelete(id);
   if (!item) throw new HttpError(404, "Announcement not found");
   res.json(toJson(item));
+}));
+
+adminRouter.get("/notifications", asyncHandler(async (req, res) => {
+  const query = pageQuery.parse(req.query);
+  const filter: Record<string, unknown> = { ...textSearch(query.search, ["title.en", "title.ru", "description.en", "description.ru"]) };
+  if (query.mosqueId) filter.mosqueIds = query.mosqueId;
+  res.json(await paged(Notification, filter, req as AdminRequest, { createdAt: -1 }));
+}));
+
+adminRouter.post("/notifications", asyncHandler(async (req, res) => {
+  const notification = await Notification.create(notificationData(notificationSchema.parse(req.body)));
+  let recipients = 0;
+  if (!notification.repeatEnabled) recipients = await recordNotificationDelivery(notification);
+  res.status(201).json({ notification: toJson(notification), recipients });
+}));
+
+adminRouter.put("/notifications/:id", asyncHandler(async (req, res) => {
+  const { id } = z.object({ id: objectIdSchema }).parse(req.params);
+  const notification = await Notification.findByIdAndUpdate(
+    id,
+    notificationData(notificationSchema.parse(req.body)),
+    { new: true, runValidators: true }
+  );
+  if (!notification) throw new HttpError(404, "Notification not found");
+  res.json(toJson(notification));
+}));
+
+adminRouter.post("/notifications/:id/resend", asyncHandler(async (req, res) => {
+  const { id } = z.object({ id: objectIdSchema }).parse(req.params);
+  const notification = await Notification.findById(id);
+  if (!notification) throw new HttpError(404, "Notification not found");
+  const recipients = await recordNotificationDelivery(notification);
+  res.json({ notification: toJson(notification), recipients });
 }));
 
 adminRouter.get("/mosques/:id/iqama-offsets", asyncHandler(async (req, res) => {

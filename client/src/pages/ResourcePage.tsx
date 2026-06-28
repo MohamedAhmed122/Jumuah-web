@@ -3,6 +3,7 @@ import { Alert, Avatar, Box, Button, Checkbox, Dialog, DialogActions, DialogCont
 import AccessTimeOutlinedIcon from "@mui/icons-material/AccessTimeOutlined";
 import CampaignOutlinedIcon from "@mui/icons-material/CampaignOutlined";
 import MosqueOutlinedIcon from "@mui/icons-material/MosqueOutlined";
+import NotificationsActiveOutlinedIcon from "@mui/icons-material/NotificationsActiveOutlined";
 import SettingsOutlinedIcon from "@mui/icons-material/SettingsOutlined";
 import TodayOutlinedIcon from "@mui/icons-material/TodayOutlined";
 import { useNavigate } from "react-router-dom";
@@ -209,7 +210,8 @@ export default function ResourcePage({ resource }: { resource: string }) {
               { label: "Mosque Prayer Times", icon: <MosqueOutlinedIcon />, path: "/prayer-times" },
               { label: "IQama Times", icon: <AccessTimeOutlinedIcon />, path: "/iqama-times" },
               { label: "Jummah Times", icon: <TodayOutlinedIcon />, path: "/jummah-times" },
-              { label: "Announcements", icon: <CampaignOutlinedIcon />, path: "/announcements" }
+              { label: "Announcements", icon: <CampaignOutlinedIcon />, path: "/announcements" },
+              { label: "Notifications", icon: <NotificationsActiveOutlinedIcon />, path: "/notifications" }
             ].map((option) => (
               <Paper
                 component="li"

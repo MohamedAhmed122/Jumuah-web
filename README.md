@@ -205,6 +205,7 @@ interface PushRegistrationPayload {
   token: string;
   deviceId: string;
   lang: "en" | "ru";
+  mosqueIds: string[]; // mosque communities selected by the user
 }
 ```
 
@@ -419,7 +420,8 @@ Request:
 {
   "token": "ExponentPushToken[xxxxxxxxxxxxxxxxxxxxxx]",
   "deviceId": "device-123",
-  "lang": "en"
+  "lang": "en",
+  "mosqueIds": ["665f1c2a91f1d8c62bc00001"]
 }
 ```
 
@@ -434,8 +436,24 @@ Response:
 Rules:
 
 - Upsert by `deviceId`.
-- Store `token`, `deviceId`, `lang`, `createdAt`, `updatedAt`, and `isActive`.
+- Store `token`, `deviceId`, `lang`, `mosqueIds`, `createdAt`, `updatedAt`, and `isActive`.
 - Validate `lang` is `en` or `ru`.
+
+### Get Active In-App Notifications
+
+```http
+GET /api/community/notifications?mosqueId=:mosqueId&screen=main&lang=en
+```
+
+The optional `screen` value is one of `main`, `community`, `settings`, or `notifications`. Omit it to retrieve all active notifications for the mobile Notification Screen.
+
+Response items include localized `title` and `description`, `screen`, `startsAt`, `endsAt`, `dismissible`, and the notification `id`. The app should hide a dismissed message locally unless `dismissible` is `false`. Messages outside their server-defined notification period are not returned.
+
+```http
+GET /api/community/notifications/:id?mosqueId=:mosqueId&lang=en
+```
+
+Expo push payloads use `data.type = "notification"` and include `id`, optional `screen`, and `mosqueIds`. The mobile app must register notification permissions, submit its Expo token with its selected mosque IDs, and route notification taps using this payload. Expo/APNs/FCM handles delivery while the app is backgrounded, closed, or killed, subject to the user granting OS notification permission.
 
 ## Error Format
 

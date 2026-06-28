@@ -1,5 +1,6 @@
 import { Expo } from "expo-server-sdk";
 import type { AnnouncementDocument } from "../models/Announcement.js";
+import type { NotificationDocument } from "../models/Notification.js";
 import { PushRegistration } from "../models/PushRegistration.js";
 
 const expo = new Expo();
@@ -33,4 +34,31 @@ export async function sendAnnouncementPush(announcement: AnnouncementDocument & 
   for (const chunk of expo.chunkPushNotifications(messages)) {
     await expo.sendPushNotificationsAsync(chunk);
   }
+}
+
+export async function sendNotificationPush(notification: NotificationDocument & { _id: unknown }) {
+  const registrations = await PushRegistration.find({
+    isActive: true,
+    mosqueIds: { $in: notification.mosqueIds }
+  });
+  const messages = registrations
+    .filter((registration) => Expo.isExpoPushToken(registration.token))
+    .map((registration) => ({
+      to: registration.token,
+      sound: "default" as const,
+      title: localizedText(notification.title, registration.lang),
+      body: localizedText(notification.description, registration.lang),
+      data: {
+        type: "notification",
+        id: String(notification._id),
+        screen: notification.screen,
+        mosqueIds: notification.mosqueIds.map(String)
+      }
+    }))
+    .filter((message) => message.title && message.body);
+
+  for (const chunk of expo.chunkPushNotifications(messages)) {
+    await expo.sendPushNotificationsAsync(chunk);
+  }
+  return messages.length;
 }

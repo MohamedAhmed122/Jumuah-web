@@ -5,6 +5,7 @@ import { Announcement } from "../models/Announcement.js";
 import { HalalPlace } from "../models/HalalPlace.js";
 import { Mosque } from "../models/Mosque.js";
 import { MosquePrayerTime } from "../models/MosquePrayerTime.js";
+import { Notification } from "../models/Notification.js";
 import { PushRegistration } from "../models/PushRegistration.js";
 import { QuizQuestion } from "../models/QuizQuestion.js";
 import { QuizSeen } from "../models/QuizSeen.js";
@@ -49,6 +50,17 @@ function serializeQuizQuestion(doc: Record<string, unknown>, lang: Lang) {
     correctIndex: doc.correctIndex,
     explanation: localizedText(doc.explanation as LocalizedStringLike, lang),
     category: doc.category
+  };
+}
+
+function serializeNotification(doc: unknown, lang: Lang) {
+  const item = toJson(doc) as Record<string, unknown>;
+  return {
+    ...item,
+    title: localizedText(item.title as LocalizedStringLike, lang),
+    description: localizedText(item.description as LocalizedStringLike, lang),
+    dismissible: item.isDismissLocked !== true,
+    lang
   };
 }
 
@@ -114,6 +126,34 @@ publicRouter.get("/community/announcements/:id", asyncHandler(async (req, res) =
   });
   if (!announcement) throw new HttpError(404, "Announcement not found");
   res.json(serializeAnnouncement(announcement, lang));
+}));
+
+publicRouter.get("/community/notifications", asyncHandler(async (req, res) => {
+  const query = z.object({
+    mosqueId: objectIdSchema,
+    screen: z.enum(["main", "community", "settings", "notifications"]).optional(),
+    lang: langSchema.optional()
+  }).parse(req.query);
+  const now = new Date();
+  const filter: Record<string, unknown> = {
+    isActive: true,
+    mosqueIds: query.mosqueId,
+    $and: [
+      { $or: [{ startsAt: { $exists: false } }, { startsAt: { $lte: now } }] },
+      { $or: [{ endsAt: { $exists: false } }, { endsAt: { $gt: now } }] }
+    ]
+  };
+  if (query.screen) filter.screen = query.screen;
+  const notifications = await Notification.find(filter).sort({ createdAt: -1 });
+  res.json(notifications.map((notification) => serializeNotification(notification, normalizeLang(query.lang))));
+}));
+
+publicRouter.get("/community/notifications/:id", asyncHandler(async (req, res) => {
+  const { id } = z.object({ id: objectIdSchema }).parse(req.params);
+  const query = z.object({ mosqueId: objectIdSchema, lang: langSchema.optional() }).parse(req.query);
+  const notification = await Notification.findOne({ _id: id, isActive: true, mosqueIds: query.mosqueId });
+  if (!notification) throw new HttpError(404, "Notification not found");
+  res.json(serializeNotification(notification, normalizeLang(query.lang)));
 }));
 
 publicRouter.get("/quiz/daily", asyncHandler(async (req, res) => {

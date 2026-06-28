@@ -10,6 +10,7 @@ import PrayerTimesPage from "./pages/PrayerTimesPage";
 import IqamaTimesPage from "./pages/IqamaTimesPage";
 import JummahTimesPage from "./pages/JummahTimesPage";
 import AnnouncementsPage from "./pages/AnnouncementsPage";
+import NotificationsPage from "./pages/NotificationsPage";
 import PushRegistrationsPage from "./pages/PushRegistrationsPage";
 
 const theme = createTheme({
@@ -48,6 +49,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
             <Route path="jummah-times" element={<JummahTimesPage />} />
             <Route path="halal-places" element={<ResourcePage resource="halal-places" />} />
             <Route path="announcements" element={<AnnouncementsPage />} />
+            <Route path="notifications" element={<NotificationsPage />} />
             <Route path="quiz-questions" element={<ResourcePage resource="quiz-questions" />} />
             <Route path="push-registrations" element={<PushRegistrationsPage />} />
           </Route>
