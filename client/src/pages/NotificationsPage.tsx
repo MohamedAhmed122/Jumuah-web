@@ -34,7 +34,7 @@ import SendOutlinedIcon from "@mui/icons-material/SendOutlined";
 import { Link, useSearchParams } from "react-router-dom";
 import { api, Paged } from "../api/client";
 
-type Lang = "en" | "ru";
+type Lang = "en" | "ru" | "lt";
 type LocalizedText = Record<Lang, string>;
 type Mosque = { id: string; name: string };
 type Screen = "" | "main" | "community" | "settings" | "notifications";
@@ -61,7 +61,8 @@ type NotificationItem = {
 
 const languages: Array<{ value: Lang; label: string }> = [
   { value: "en", label: "English" },
-  { value: "ru", label: "Russian" }
+  { value: "ru", label: "Russian" },
+  { value: "lt", label: "Lithuanian" }
 ];
 const screenOptions: Array<{ value: Exclude<Screen, "">; label: string }> = [
   { value: "main", label: "Main Screen" },
@@ -88,8 +89,8 @@ function localDateTime(value?: string) {
 
 function emptyNotification(mosqueId: string): NotificationItem {
   return {
-    title: { en: "", ru: "" },
-    description: { en: "", ru: "" },
+    title: { en: "", ru: "", lt: "" },
+    description: { en: "", ru: "", lt: "" },
     mosqueIds: mosqueId ? [mosqueId] : [],
     screen: "",
     startsAt: "",
@@ -104,9 +105,20 @@ function emptyNotification(mosqueId: string): NotificationItem {
   };
 }
 
+function localizedText(value: LocalizedText | string | undefined): LocalizedText {
+  if (typeof value === "string") return { en: value, ru: "", lt: "" };
+  return {
+    en: value?.en ?? "",
+    ru: value?.ru ?? "",
+    lt: value?.lt ?? ""
+  };
+}
+
 function editableNotification(item: NotificationItem): NotificationItem {
   return {
     ...item,
+    title: localizedText(item.title),
+    description: localizedText(item.description),
     screen: item.screen ?? "",
     startsAt: localDateTime(item.startsAt),
     endsAt: localDateTime(item.endsAt),
@@ -163,8 +175,8 @@ export default function NotificationsPage() {
   }
 
   function validate(item: NotificationItem) {
-    if (!item.title.en.trim() || !item.title.ru.trim()) return "Add the title in English and Russian.";
-    if (!item.description.en.trim() || !item.description.ru.trim()) return "Add the description in English and Russian.";
+    if (languages.some((language) => !item.title[language.value].trim())) return "Add the title in English, Russian and Lithuanian.";
+    if (languages.some((language) => !item.description[language.value].trim())) return "Add the description in English, Russian and Lithuanian.";
     if (!item.mosqueIds.length) return "Select at least one mosque.";
     if (Boolean(item.startsAt) !== Boolean(item.endsAt)) return "The notification period requires both start and end.";
     if (item.startsAt && item.endsAt && item.endsAt <= item.startsAt) return "The period end must be after its start.";
@@ -273,8 +285,8 @@ export default function NotificationsPage() {
             {rows.map((item) => (
               <TableRow key={item.id}>
                 <TableCell>
-                  <Typography variant="body2" sx={{ fontWeight: 700 }}>{item.title.en || item.title.ru}</Typography>
-                  <Typography variant="caption" color="text.secondary">{item.description.en}</Typography>
+                  <Typography variant="body2" sx={{ fontWeight: 700 }}>{item.title.en || item.title.ru || item.title.lt}</Typography>
+                  <Typography variant="caption" color="text.secondary">{item.description.en || item.description.ru || item.description.lt}</Typography>
                 </TableCell>
                 <TableCell>
                   <Stack direction="row" gap={0.5} flexWrap="wrap">

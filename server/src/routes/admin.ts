@@ -141,11 +141,17 @@ const localizedStringSchema = z.object({
   ru: z.string().min(1)
 });
 
+const trilingualStringSchema = z.object({
+  en: z.string().min(1),
+  ru: z.string().min(1),
+  lt: z.string().min(1)
+});
+
 const notificationScreenSchema = z.enum(["main", "community", "settings", "notifications"]);
 const notificationWeekdaySchema = z.enum(["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]);
 const notificationSchema = z.object({
-  title: localizedStringSchema,
-  description: localizedStringSchema,
+  title: trilingualStringSchema,
+  description: trilingualStringSchema,
   mosqueIds: z.array(objectIdSchema).min(1),
   screen: notificationScreenSchema.optional().or(z.literal("")),
   startsAt: z.coerce.date().optional().nullable(),
@@ -204,7 +210,7 @@ const halalPlaceSchema = z.object({
   phone: z.string().optional().or(z.literal("")),
   hours: z.string().optional().or(z.literal("")),
   image: z.string().min(1),
-  descriptionHtml: z.string().min(1),
+  descriptionHtml: trilingualStringSchema,
   lat: z.coerce.number(),
   lng: z.coerce.number(),
   country: z.string().trim().min(1).default("Lithuania"),
@@ -226,9 +232,9 @@ const localizedOptionsSchema = z.object({
 });
 
 const announcementSchema = z.object({
-  title: localizedStringSchema,
+  title: trilingualStringSchema,
   image: z.string().min(1),
-  descriptionHtml: localizedStringSchema,
+  descriptionHtml: trilingualStringSchema,
   mosqueIds: z.array(objectIdSchema).min(1),
   date: z.coerce.date(),
   eventDate: z.coerce.date().optional().nullable(),
@@ -432,13 +438,13 @@ function crudRoutes(path: string, model: any, schema: z.ZodTypeAny, searchFields
 
 crudRoutes("/mosques", Mosque, mosqueSchema, ["name", "address"], { sortOrder: 1, name: 1 });
 crudRoutes("/mosque-prayer-times", MosquePrayerTime, prayerTimeSchema, ["date"], { date: 1 });
-crudRoutes("/halal-places", HalalPlace, halalPlaceSchema, ["name", "address", "city"], { sortOrder: 1, name: 1 });
+crudRoutes("/halal-places", HalalPlace, halalPlaceSchema, ["name", "address", "city", "descriptionHtml.en", "descriptionHtml.ru", "descriptionHtml.lt"], { sortOrder: 1, name: 1 });
 crudRoutes("/quiz-questions", QuizQuestion, quizSchema, ["question.en", "question.ru", "explanation.en", "explanation.ru"], { createdAt: -1 });
 
 adminRouter.get("/announcements", asyncHandler(async (req, res) => {
   await removeExpiredAnnouncements();
   const query = pageQuery.parse(req.query);
-  const filter: Record<string, unknown> = { ...textSearch(query.search, ["title.en", "title.ru"]) };
+  const filter: Record<string, unknown> = { ...textSearch(query.search, ["title.en", "title.ru", "title.lt"]) };
   if (query.status) filter.status = query.status;
   if (query.mosqueId) filter.mosqueIds = query.mosqueId;
   res.json(await paged(Announcement, filter, req as AdminRequest, { isPinned: -1, createdAt: -1 }));
@@ -481,7 +487,7 @@ adminRouter.delete("/announcements/:id", asyncHandler(async (req, res) => {
 
 adminRouter.get("/notifications", asyncHandler(async (req, res) => {
   const query = pageQuery.parse(req.query);
-  const filter: Record<string, unknown> = { ...textSearch(query.search, ["title.en", "title.ru", "description.en", "description.ru"]) };
+  const filter: Record<string, unknown> = { ...textSearch(query.search, ["title.en", "title.ru", "title.lt", "description.en", "description.ru", "description.lt"]) };
   if (query.mosqueId) filter.mosqueIds = query.mosqueId;
   res.json(await paged(Notification, filter, req as AdminRequest, { createdAt: -1 }));
 }));

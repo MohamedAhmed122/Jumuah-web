@@ -16,7 +16,7 @@ import { removeExpiredAnnouncements } from "../services/announcementMaintenance.
 
 export const publicRouter = Router();
 
-type Lang = "en" | "ru";
+type Lang = "en" | "ru" | "lt";
 type LocalizedStringLike = string | Partial<Record<Lang, string>>;
 type LocalizedOptionsLike = string[] | Partial<Record<Lang, string[]>>;
 
@@ -39,6 +39,14 @@ function serializeAnnouncement(doc: unknown, lang: Lang) {
     title: localizedText(item.title as LocalizedStringLike, lang),
     descriptionHtml: localizedText(item.descriptionHtml as LocalizedStringLike, lang),
     lang
+  };
+}
+
+function serializeHalalPlace(doc: unknown, lang: Lang) {
+  const item = toJson(doc) as Record<string, unknown>;
+  return {
+    ...item,
+    descriptionHtml: localizedText(item.descriptionHtml as LocalizedStringLike, lang)
   };
 }
 
@@ -89,6 +97,7 @@ publicRouter.get("/locations/mosques/:id/prayer-times", asyncHandler(async (req,
 
 publicRouter.get("/locations/halal", asyncHandler(async (req, res) => {
   const query = z.object({
+    lang: langSchema.optional(),
     category: z.enum(["restaurant", "grocery", "fast_food", "supermarket_halal"]).optional(),
     foodCategory: z.string().trim().min(1).optional(),
     country: z.string().trim().min(1).optional(),
@@ -100,7 +109,7 @@ publicRouter.get("/locations/halal", asyncHandler(async (req, res) => {
   if (query.country) filter.country = query.country;
   if (query.city) filter.city = query.city;
   const places = await HalalPlace.find(filter).sort({ sortOrder: 1, name: 1 });
-  res.json(toJsonList(places));
+  res.json(places.map((place) => serializeHalalPlace(place, normalizeLang(query.lang))));
 }));
 
 publicRouter.get("/locations/halal/categories", asyncHandler(async (_req, res) => {

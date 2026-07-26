@@ -10,14 +10,14 @@ import { useNavigate } from "react-router-dom";
 import { api, Paged, uploadImage } from "../api/client";
 import PlaceAutocomplete, { type PlaceOption } from "../components/PlaceAutocomplete";
 import RichTextHtmlEditor from "../components/RichTextHtmlEditor";
-import { FieldConfig, resources } from "./resourceConfig";
+import { FieldConfig, resources, type Lang } from "./resourceConfig";
 
 type Row = Record<string, any>;
 type ReferenceOptions = Record<string, Array<{ value: string; label: string }>>;
-type Lang = "en" | "ru";
-const languages: Array<{ value: Lang; label: string }> = [
+const allLanguages: Array<{ value: Lang; label: string }> = [
   { value: "en", label: "English" },
-  { value: "ru", label: "Russian" }
+  { value: "ru", label: "Russian" },
+  { value: "lt", label: "Lithuanian" }
 ];
 
 function getValue(object: Row, path: string): any {
@@ -45,7 +45,7 @@ function renderCell(row: Row, column: string) {
   if (column === "averageMealCost" && Number.isFinite(Number(value))) return `€${Number(value).toFixed(2)}`;
   if (column === "discountPercent" && Number.isFinite(Number(value))) return `${value}%`;
   if (column.toLowerCase().includes("date") && (typeof value === "string" || typeof value === "number")) return new Date(value).toLocaleString();
-  if (value && typeof value === "object" && !Array.isArray(value)) return value.en || value.ru || "-";
+  if (value && typeof value === "object" && !Array.isArray(value)) return value.en || value.ru || value.lt || "-";
   return String(value);
 }
 
@@ -62,6 +62,7 @@ function hasCoordinates(row: Row) {
 export default function ResourcePage({ resource }: { resource: string }) {
   const navigate = useNavigate();
   const config = resources[resource];
+  const languages = allLanguages.filter((language) => (config?.languages ?? ["en", "ru"]).includes(language.value));
   const [rows, setRows] = useState<Row[]>([]);
   const [total, setTotal] = useState(0);
   const [search, setSearch] = useState("");
@@ -419,7 +420,7 @@ function FieldEditor({
     return <RichTextHtmlEditor label={field.label} value={value ?? ""} onChange={onChange} />;
   }
   if (field.type === "localizedText" || field.type === "localizedTextarea") {
-    const localizedValue = typeof value === "object" && value ? value : { en: typeof value === "string" ? value : "", ru: "" };
+    const localizedValue = typeof value === "object" && value ? value : { en: typeof value === "string" ? value : "", ru: "", lt: "" };
     return (
       <TextField
         label={`${field.label} (${activeLang})`}
@@ -433,7 +434,7 @@ function FieldEditor({
     );
   }
   if (field.type === "localizedRichtext") {
-    const localizedValue = typeof value === "object" && value ? value : { en: typeof value === "string" ? value : "", ru: "" };
+    const localizedValue = typeof value === "object" && value ? value : { en: typeof value === "string" ? value : "", ru: "", lt: "" };
     return (
       <RichTextHtmlEditor
         label={`${field.label} (${activeLang})`}

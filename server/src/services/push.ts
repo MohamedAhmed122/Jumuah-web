@@ -4,7 +4,7 @@ import type { NotificationDocument } from "../models/Notification.js";
 import { PushRegistration } from "../models/PushRegistration.js";
 
 const expo = new Expo();
-type Lang = "en" | "ru";
+type Lang = "en" | "ru" | "lt";
 
 function localizedText(value: string | Partial<Record<Lang, string>>, lang: Lang) {
   if (typeof value === "string") return value;

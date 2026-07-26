@@ -39,7 +39,7 @@ import { api, Paged, uploadImage } from "../api/client";
 import PlaceAutocomplete, { PlaceOption } from "../components/PlaceAutocomplete";
 import RichTextHtmlEditor from "../components/RichTextHtmlEditor";
 
-type Lang = "en" | "ru";
+type Lang = "en" | "ru" | "lt";
 type LocalizedText = Record<Lang, string>;
 type Mosque = { id: string; name: string; address?: string };
 type OutsideLocation = { address: string; lat?: number; lng?: number };
@@ -65,7 +65,8 @@ type Announcement = {
 
 const languages: Array<{ value: Lang; label: string }> = [
   { value: "en", label: "English" },
-  { value: "ru", label: "Russian" }
+  { value: "ru", label: "Russian" },
+  { value: "lt", label: "Lithuanian" }
 ];
 
 function localDateTime(value?: string | Date) {
@@ -76,8 +77,8 @@ function localDateTime(value?: string | Date) {
 
 function emptyAnnouncement(mosqueId: string): Announcement {
   return {
-    title: { en: "", ru: "" },
-    descriptionHtml: { en: "<p></p>", ru: "<p></p>" },
+    title: { en: "", ru: "", lt: "" },
+    descriptionHtml: { en: "<p></p>", ru: "<p></p>", lt: "<p></p>" },
     image: "",
     mosqueIds: mosqueId ? [mosqueId] : [],
     status: "draft",
@@ -94,9 +95,20 @@ function emptyAnnouncement(mosqueId: string): Announcement {
   };
 }
 
+function localizedText(value: LocalizedText | string | undefined, fallback = ""): LocalizedText {
+  if (typeof value === "string") return { en: value, ru: fallback, lt: fallback };
+  return {
+    en: value?.en ?? fallback,
+    ru: value?.ru ?? fallback,
+    lt: value?.lt ?? fallback
+  };
+}
+
 function editableAnnouncement(item: Announcement): Announcement {
   return {
     ...item,
+    title: localizedText(item.title),
+    descriptionHtml: localizedText(item.descriptionHtml, "<p></p>"),
     date: localDateTime(item.date),
     eventDate: item.eventDate ? localDateTime(item.eventDate) : "",
     endDate: item.endDate ? localDateTime(item.endDate) : "",
@@ -163,8 +175,8 @@ export default function AnnouncementsPage() {
   function validate(item: Announcement) {
     if (!item.mosqueIds.length) return "Select at least one audience mosque.";
     if (!item.image) return "Upload an announcement image.";
-    if (!item.title.en.trim() || !item.title.ru.trim()) return "Add the title in English and Russian.";
-    if (!hasText(item.descriptionHtml.en) || !hasText(item.descriptionHtml.ru)) return "Add the description in English and Russian.";
+    if (languages.some((language) => !item.title[language.value].trim())) return "Add the title in English, Russian and Lithuanian.";
+    if (languages.some((language) => !hasText(item.descriptionHtml[language.value]))) return "Add the description in English, Russian and Lithuanian.";
     if (!item.date) return "Announcement date is required.";
     if (item.locationType === "mosque" && !item.locationMosqueId) return "Select the event mosque.";
     if (item.locationType === "outside" && (!item.outsideLocation.address || !Number.isFinite(item.outsideLocation.lat) || !Number.isFinite(item.outsideLocation.lng))) {
@@ -292,7 +304,7 @@ export default function AnnouncementsPage() {
                     <Box>
                       <Stack direction="row" spacing={0.75} alignItems="center">
                         {item.isPinned && <PushPinOutlinedIcon color="secondary" fontSize="small" />}
-                        <Typography variant="body2" sx={{ fontWeight: 700 }}>{item.title.en || item.title.ru}</Typography>
+                        <Typography variant="body2" sx={{ fontWeight: 700 }}>{item.title.en || item.title.ru || item.title.lt}</Typography>
                       </Stack>
                       <Typography variant="caption" color="text.secondary">{new Date(item.date).toLocaleString()}</Typography>
                     </Box>

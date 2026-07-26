@@ -28,7 +28,8 @@ export interface NotificationDocument {
 const localizedStringSchema = new Schema<LocalizedString>(
   {
     en: { type: String, required: true, trim: true },
-    ru: { type: String, required: true, trim: true }
+    ru: { type: String, required: true, trim: true },
+    lt: { type: String, required: true, trim: true }
   },
   { _id: false }
 );

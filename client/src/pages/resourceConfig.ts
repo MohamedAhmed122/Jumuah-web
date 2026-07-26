@@ -17,6 +17,8 @@ export type FieldType =
   | "datetime"
   | "password";
 
+export type Lang = "en" | "ru" | "lt";
+
 export type FieldConfig = {
   name: string;
   label: string;
@@ -37,6 +39,7 @@ export type ResourceConfig = {
   fields: FieldConfig[];
   defaults: Record<string, unknown>;
   filters?: FieldConfig[];
+  languages?: Lang[];
 };
 
 const restaurantFoodCategories = [
@@ -90,7 +93,16 @@ export const resources: Record<string, ResourceConfig> = {
     title: "Halal Places",
     endpoint: "/api/admin/halal-places",
     columns: ["image", "name", "category", "foodCategories", "averageMealCost", "promoCode", "discountPercent", "country", "city", "isActive"],
-    defaults: { category: "restaurant", foodCategories: [], country: "Lithuania", isActive: true, lat: 54.6872, lng: 25.2797, descriptionHtml: "<p></p>" },
+    defaults: {
+      category: "restaurant",
+      foodCategories: [],
+      country: "Lithuania",
+      isActive: true,
+      lat: 54.6872,
+      lng: 25.2797,
+      descriptionHtml: { en: "<p></p>", ru: "<p></p>", lt: "<p></p>" }
+    },
+    languages: ["en", "ru", "lt"],
     fields: [
       { name: "image", label: "Image", type: "image", required: true },
       { name: "name", label: "Name", type: "text", required: true },
@@ -108,7 +120,7 @@ export const resources: Record<string, ResourceConfig> = {
       { name: "address", label: "Address", type: "placeAutocomplete", required: true },
       { name: "phone", label: "Phone", type: "text" },
       { name: "hours", label: "Hours HH:mm-HH:mm", type: "text" },
-      { name: "descriptionHtml", label: "Description", type: "richtext", required: true },
+      { name: "descriptionHtml", label: "Description", type: "localizedRichtext", required: true },
       { name: "promoCode", label: "Promo code", type: "text" },
       { name: "discountPercent", label: "Discount (%)", type: "number", min: 0, max: 100, step: 1 },
       { name: "sortOrder", label: "Sort order", type: "number" },

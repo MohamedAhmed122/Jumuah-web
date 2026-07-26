@@ -1,4 +1,4 @@
-# Change IQama times
+# 1. Change IQama times
 
 ## Summary
 
@@ -124,3 +124,116 @@ function getIqamaTime(
 ```
 
 The important behavior is that exact IQama times should be treated as fixed times and should not be recalculated from Athan.
+
+# 2. Change Lithuanian language support
+
+## Summary
+
+The backend now accepts Lithuanian (`lt`) in addition to English (`en`) and Russian (`ru`) for localized public/admin content.
+
+Supported language values are now:
+
+```ts
+type Lang = "en" | "ru" | "lt";
+```
+
+## Announcement changes
+
+Announcement admin records now require Lithuanian translations alongside English and Russian:
+
+```ts
+title: {
+  en: string;
+  ru: string;
+  lt: string;
+};
+
+descriptionHtml: {
+  en: string;
+  ru: string;
+  lt: string;
+};
+```
+
+Public announcement endpoints now accept `?lang=lt`:
+
+```http
+GET /api/community/announcements?mosqueId=:mosqueId&lang=lt
+GET /api/community/announcements/:id?mosqueId=:mosqueId&lang=lt
+```
+
+The public response still returns `title` and `descriptionHtml` as strings, localized to the requested language.
+
+## Notification changes
+
+Notification admin records now require Lithuanian translations alongside English and Russian:
+
+```ts
+title: {
+  en: string;
+  ru: string;
+  lt: string;
+};
+
+description: {
+  en: string;
+  ru: string;
+  lt: string;
+};
+```
+
+Public notification endpoints now accept `?lang=lt`:
+
+```http
+GET /api/community/notifications?mosqueId=:mosqueId&screen=main&lang=lt
+GET /api/community/notifications/:id?mosqueId=:mosqueId&lang=lt
+```
+
+Push registration now also accepts Lithuanian:
+
+```json
+{
+  "token": "ExponentPushToken[...]",
+  "deviceId": "device-123",
+  "lang": "lt",
+  "mosqueIds": ["64f000000000000000000001"]
+}
+```
+
+When a Lithuanian device receives announcement or notification pushes, the backend uses the Lithuanian title/body.
+
+## Halal Place changes
+
+Halal Place `descriptionHtml` is now localized. Admin records should store:
+
+```ts
+descriptionHtml: {
+  en: string;
+  ru: string;
+  lt: string;
+};
+```
+
+The public halal endpoint now accepts `?lang=lt`, `?lang=ru`, or `?lang=en`:
+
+```http
+GET /api/locations/halal?lang=lt
+```
+
+The public response shape is intentionally preserved. `descriptionHtml` is still returned as a string:
+
+```json
+{
+  "id": "64f000000000000000000001",
+  "name": "Halal Restaurant",
+  "descriptionHtml": "<p>Lithuanian description here.</p>"
+}
+```
+
+Mobile app logic should request the current app language with halal places too. If the app language is Lithuanian, call:
+
+```http
+GET /api/locations/halal?lang=lt
+```
+
+Localized fields fall back to English if the requested language value is missing.

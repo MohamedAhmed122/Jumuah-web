@@ -3,7 +3,7 @@ import mongoose, { Schema } from "mongoose";
 export interface PushRegistrationDocument {
   deviceId: string;
   token: string;
-  lang: "en" | "ru";
+  lang: "en" | "ru" | "lt";
   mosqueIds: mongoose.Types.ObjectId[];
   isActive: boolean;
   createdAt: Date;
@@ -14,7 +14,7 @@ const pushRegistrationSchema = new Schema<PushRegistrationDocument>(
   {
     deviceId: { type: String, required: true, unique: true, trim: true },
     token: { type: String, required: true },
-    lang: { type: String, enum: ["en", "ru"], required: true },
+    lang: { type: String, enum: ["en", "ru", "lt"], required: true },
     mosqueIds: [{ type: Schema.Types.ObjectId, ref: "Mosque" }],
     isActive: { type: Boolean, default: true }
   },

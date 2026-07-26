@@ -1,5 +1,9 @@
 import mongoose, { Schema } from "mongoose";
-import type { LocalizedString } from "./Announcement.js";
+
+type BilingualString = {
+  en: string;
+  ru: string;
+};
 
 export type LocalizedOptions = {
   en: string[];
@@ -7,17 +11,17 @@ export type LocalizedOptions = {
 };
 
 export interface QuizQuestionDocument {
-  question: LocalizedString;
+  question: BilingualString;
   options: LocalizedOptions;
   correctIndex: number;
-  explanation: LocalizedString;
+  explanation: BilingualString;
   category: "aqeedah" | "fiqh" | "seerah" | "quran" | "hadith";
   isActive: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
 
-const localizedStringSchema = new Schema<LocalizedString>(
+const localizedStringSchema = new Schema<BilingualString>(
   {
     en: { type: String, default: "" },
     ru: { type: String, default: "" }

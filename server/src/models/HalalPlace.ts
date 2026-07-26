@@ -1,4 +1,5 @@
 import mongoose, { Schema } from "mongoose";
+import type { LocalizedString } from "./Announcement.js";
 
 export interface HalalPlaceDocument {
   name: string;
@@ -11,7 +12,7 @@ export interface HalalPlaceDocument {
   phone?: string;
   hours?: string;
   image: string;
-  descriptionHtml: string;
+  descriptionHtml: string | LocalizedString;
   lat: number;
   lng: number;
   country: string;
@@ -34,7 +35,7 @@ const halalPlaceSchema = new Schema<HalalPlaceDocument>(
     phone: String,
     hours: String,
     image: { type: String, required: true },
-    descriptionHtml: { type: String, required: true },
+    descriptionHtml: { type: Schema.Types.Mixed, required: true },
     lat: { type: Number, required: true },
     lng: { type: Number, required: true },
     country: { type: String, required: true, trim: true, default: "Lithuania", index: true },

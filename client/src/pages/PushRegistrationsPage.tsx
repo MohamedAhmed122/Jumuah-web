@@ -6,7 +6,7 @@ type PushRegistration = {
   id: string;
   deviceId: string;
   token: string;
-  lang: "en" | "ru";
+  lang: "en" | "ru" | "lt";
   isActive: boolean;
   createdAt: string;
   updatedAt: string;

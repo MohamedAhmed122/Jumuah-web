@@ -3,6 +3,7 @@ import mongoose, { Schema } from "mongoose";
 export type LocalizedString = {
   en: string;
   ru: string;
+  lt: string;
 };
 
 export interface AnnouncementDocument {
@@ -33,7 +34,8 @@ export interface AnnouncementDocument {
 const localizedStringSchema = new Schema<LocalizedString>(
   {
     en: { type: String, default: "" },
-    ru: { type: String, default: "" }
+    ru: { type: String, default: "" },
+    lt: { type: String, default: "" }
   },
   { _id: false }
 );
@@ -73,5 +75,6 @@ announcementSchema.index({ mosqueIds: 1, status: 1, isPinned: -1, createdAt: -1 
 announcementSchema.index({ deleteAfterEndDate: 1, endDate: 1 });
 announcementSchema.index({ "title.en": 1 });
 announcementSchema.index({ "title.ru": 1 });
+announcementSchema.index({ "title.lt": 1 });
 
 export const Announcement = mongoose.model<AnnouncementDocument>("Announcement", announcementSchema);
