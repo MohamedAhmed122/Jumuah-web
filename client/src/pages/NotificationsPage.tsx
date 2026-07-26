@@ -238,13 +238,13 @@ export default function NotificationsPage() {
   return (
     <>
       <Button component={Link} to="/mosques" startIcon={<ArrowBackOutlinedIcon />} sx={{ mb: 1 }}>Back to mosques</Button>
-      <Stack direction={{ xs: "column", md: "row" }} alignItems={{ md: "flex-end" }} justifyContent="space-between" spacing={2} sx={{ mb: 3 }}>
-        <Box>
-          <Typography variant="h4" sx={{ fontWeight: 700 }}>Notifications</Typography>
+      <Stack direction={{ xs: "column", md: "row" }} alignItems={{ xs: "stretch", md: "flex-end" }} justifyContent="space-between" spacing={2} sx={{ mb: 3 }}>
+        <Box sx={{ minWidth: 0 }}>
+          <Typography variant="h4" sx={{ fontWeight: 700, fontSize: { xs: "2rem", sm: "2.125rem" } }}>Notifications</Typography>
           <Typography color="text.secondary">{total} notifications for the selected mosque</Typography>
         </Box>
         <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5}>
-          <FormControl size="small" sx={{ minWidth: 260 }}>
+          <FormControl size="small" sx={{ width: { xs: "100%", sm: 260 } }}>
             <InputLabel>Mosque</InputLabel>
             <Select label="Mosque" value={mosqueId} onChange={(event) => {
               const nextMosqueId = event.target.value;
@@ -258,7 +258,7 @@ export default function NotificationsPage() {
             setActiveLang("en");
             setError("");
             setEditing(emptyNotification(mosqueId));
-          }}>Create notification</Button>
+          }} sx={{ width: { xs: "100%", sm: "auto" } }}>Create notification</Button>
         </Stack>
       </Stack>
 
@@ -266,11 +266,11 @@ export default function NotificationsPage() {
       {!editing && error && <Alert severity="error" onClose={() => setError("")} sx={{ mb: 2 }}>{error}</Alert>}
 
       <Paper sx={{ p: 2, mb: 2 }}>
-        <TextField size="small" label="Search notifications" value={search} onChange={(event) => setSearch(event.target.value)} />
+        <TextField size="small" label="Search notifications" value={search} onChange={(event) => setSearch(event.target.value)} fullWidth sx={{ maxWidth: { sm: 360 } }} />
       </Paper>
 
-      <Paper sx={{ overflowX: "auto" }}>
-        <Table size="small">
+      <Paper sx={{ overflowX: "auto", width: "100%" }}>
+        <Table size="small" sx={{ minWidth: 920 }}>
           <TableHead>
             <TableRow>
               <TableCell>Notification</TableCell>
@@ -322,13 +322,13 @@ export default function NotificationsPage() {
         </Table>
       </Paper>
 
-      <Dialog open={Boolean(editing)} onClose={() => !saving && setEditing(null)} maxWidth="md" fullWidth>
+      <Dialog open={Boolean(editing)} onClose={() => !saving && setEditing(null)} maxWidth="md" fullWidth sx={{ "& .MuiDialog-paper": { m: { xs: 1, sm: 4 }, width: { xs: "calc(100% - 16px)", sm: "100%" } } }}>
         <DialogTitle>{editing?.id ? "Edit notification" : "Create notification"}</DialogTitle>
         <DialogContent>
           {editing && (
             <Stack spacing={2.5} sx={{ mt: 1 }}>
               {error && <Alert severity="error">{error}</Alert>}
-              <Tabs value={activeLang} onChange={(_event, value: Lang) => setActiveLang(value)}>
+              <Tabs value={activeLang} onChange={(_event, value: Lang) => setActiveLang(value)} variant="scrollable" scrollButtons="auto">
                 {languages.map((language) => <Tab key={language.value} value={language.value} label={language.label} />)}
               </Tabs>
               <TextField
@@ -434,7 +434,7 @@ export default function NotificationsPage() {
             </Stack>
           )}
         </DialogContent>
-        <DialogActions>
+        <DialogActions sx={{ flexDirection: { xs: "column-reverse", sm: "row" }, alignItems: { xs: "stretch", sm: "center" }, px: { xs: 2, sm: 3 } }}>
           <Button disabled={saving} onClick={() => setEditing(null)}>Cancel</Button>
           <Button variant="contained" disabled={saving} onClick={() => void save()}>
             {saving ? "Saving…" : editing?.id ? "Save changes" : editing?.repeatEnabled ? "Create schedule" : "Create and send"}

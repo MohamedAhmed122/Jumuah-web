@@ -131,9 +131,15 @@ function localDateTimeParam(date: Date) {
   return local.toISOString().slice(0, 16);
 }
 
-function titleText(value: LocalizedText | string | undefined) {
-  if (typeof value === "string") return value;
-  return value?.en || value?.ru || value?.lt || "Untitled";
+function titleText(value: unknown, fallback = "Untitled") {
+  if (typeof value === "string") return value.trim() || fallback;
+  if (!value || typeof value !== "object") return fallback;
+  const localized = value as Partial<Record<Lang, unknown>>;
+  for (const language of ["en", "ru", "lt"] as const) {
+    const text = localized[language];
+    if (typeof text === "string" && text.trim()) return text.trim();
+  }
+  return fallback;
 }
 
 function createAt(date: Date, hour: number) {
@@ -144,6 +150,43 @@ function createAt(date: Date, hour: number) {
 
 function hasText(html: string) {
   return html.replace(/<[^>]*>/g, "").replace(/&nbsp;/g, " ").trim().length > 0;
+}
+
+function hourValue(date: Date) {
+  return date.getHours() + date.getMinutes() / 60;
+}
+
+function layoutDayItems(items: CalendarItem[]) {
+  const sorted = [...items]
+    .sort((left, right) => left.startsAt.getTime() - right.startsAt.getTime())
+    .map((item) => {
+      const start = item.startsAt.getTime();
+      const end = Math.max((item.endsAt ?? new Date(start + 45 * 60 * 1000)).getTime(), start + 30 * 60 * 1000);
+      return { ...item, start, end };
+    });
+  const clusters: Array<typeof sorted> = [];
+
+  for (const item of sorted) {
+    const currentCluster = clusters[clusters.length - 1];
+    const clusterEnd = currentCluster ? Math.max(...currentCluster.map((clusterItem) => clusterItem.end)) : 0;
+    if (!currentCluster || item.start >= clusterEnd) {
+      clusters.push([item]);
+    } else {
+      currentCluster.push(item);
+    }
+  }
+
+  return clusters.flatMap((cluster) => {
+    const lanes: number[] = [];
+    const positioned = cluster.map((item) => {
+      const lane = lanes.findIndex((laneEnd) => laneEnd <= item.start);
+      const nextLane = lane === -1 ? lanes.length : lane;
+      lanes[nextLane] = item.end;
+      return { ...item, lane: nextLane };
+    });
+    const laneCount = Math.max(1, lanes.length);
+    return positioned.map((item) => ({ ...item, laneCount }));
+  });
 }
 
 function emptyDraft(type: CalendarSource, mosqueId: string, eventDate: string): CalendarDraft {
@@ -213,6 +256,9 @@ export default function CalendarPage() {
     return Array.from({ length: lastHour - firstHour + 1 }, (_value, index) => firstHour + index);
   }, [calendarItems, days]);
   const zoom = zoomLevels[zoomIndex];
+  const visibleStartHour = visibleHours[0] ?? 8;
+  const visibleEndHour = (visibleHours[visibleHours.length - 1] ?? 18) + 1;
+  const calendarBodyHeight = visibleHours.length * zoom.rowHeight;
 
   useEffect(() => {
     void api.get<Paged<Mosque>>("/api/admin/mosques", { params: { pageSize: 100 } })
@@ -344,13 +390,13 @@ export default function CalendarPage() {
 
   return (
     <>
-      <Stack direction={{ xs: "column", lg: "row" }} alignItems={{ lg: "flex-end" }} justifyContent="space-between" spacing={2} sx={{ mb: 3 }}>
-        <Box>
-          <Typography variant="h4" sx={{ fontWeight: 700 }}>Calendar</Typography>
+      <Stack direction={{ xs: "column", lg: "row" }} alignItems={{ xs: "stretch", lg: "flex-end" }} justifyContent="space-between" spacing={2} sx={{ mb: 3 }}>
+        <Box sx={{ minWidth: 0 }}>
+          <Typography variant="h4" sx={{ fontWeight: 700, fontSize: { xs: "2rem", sm: "2.125rem" } }}>Calendar</Typography>
           <Typography color="text.secondary">Events and announcements for the selected mosque</Typography>
         </Box>
         <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5}>
-          <FormControl size="small" sx={{ minWidth: 260 }}>
+          <FormControl size="small" sx={{ width: { xs: "100%", sm: 260 } }}>
             <InputLabel>Mosque</InputLabel>
             <Select label="Mosque" value={mosqueId} onChange={(event) => {
               const nextMosqueId = event.target.value;
@@ -360,29 +406,29 @@ export default function CalendarPage() {
               {mosques.map((mosque) => <MenuItem key={mosque.id} value={mosque.id}>{mosque.name}</MenuItem>)}
             </Select>
           </FormControl>
-          <Button variant="outlined" startIcon={<AddOutlinedIcon />} disabled={!mosqueId} onClick={() => createItem("announcement")}>Announcement</Button>
-          <Button variant="contained" startIcon={<AddOutlinedIcon />} disabled={!mosqueId} onClick={() => createItem("event")}>Event</Button>
+          <Button variant="outlined" startIcon={<AddOutlinedIcon />} disabled={!mosqueId} onClick={() => createItem("announcement")} sx={{ width: { xs: "100%", sm: "auto" } }}>Announcement</Button>
+          <Button variant="contained" startIcon={<AddOutlinedIcon />} disabled={!mosqueId} onClick={() => createItem("event")} sx={{ width: { xs: "100%", sm: "auto" } }}>Event</Button>
         </Stack>
       </Stack>
 
       {error && <Alert severity="error" onClose={() => setError("")} sx={{ mb: 2 }}>{error}</Alert>}
 
-      <Paper sx={{ p: 2, mb: 2 }}>
-        <Stack direction={{ xs: "column", md: "row" }} alignItems={{ md: "center" }} justifyContent="space-between" spacing={2}>
-          <Stack direction="row" spacing={1}>
+      <Paper sx={{ p: { xs: 1.5, sm: 2 }, mb: 2 }}>
+        <Stack direction={{ xs: "column", md: "row" }} alignItems={{ xs: "stretch", md: "center" }} justifyContent="space-between" spacing={2}>
+          <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
             <Button variant="outlined" startIcon={<ChevronLeftOutlinedIcon />} onClick={() => setWeekStart(addDays(weekStart, -7))}>Previous</Button>
             <Button variant="outlined" startIcon={<TodayOutlinedIcon />} onClick={() => setWeekStart(startOfWeek(new Date()))}>Today</Button>
             <Button variant="outlined" endIcon={<ChevronRightOutlinedIcon />} onClick={() => setWeekStart(addDays(weekStart, 7))}>Next</Button>
           </Stack>
-          <Stack direction="row" spacing={1} alignItems="center">
+          <Stack direction="row" spacing={1} alignItems="center" justifyContent={{ xs: "center", md: "flex-start" }}>
             <CalendarMonthOutlinedIcon color="primary" />
             <Typography variant="h6">{rangeFormatter.format(weekStart)} - {rangeFormatter.format(weekEnd)}</Typography>
           </Stack>
-          <Stack direction="row" spacing={1}>
+          <Stack direction="row" spacing={1} justifyContent={{ xs: "center", md: "flex-start" }} flexWrap="wrap" useFlexGap>
             <Chip label="Events" sx={{ bgcolor: "#d7f4ee", color: "#0f766e", borderColor: "#0f766e" }} variant="outlined" />
             <Chip label="Announcements" sx={{ bgcolor: "#ede9fe", color: "#6d28d9", borderColor: "#6d28d9" }} variant="outlined" />
           </Stack>
-          <Stack direction="row" spacing={1} alignItems="center">
+          <Stack direction={{ xs: "column", sm: "row" }} spacing={1} alignItems={{ sm: "center" }}>
             <Button
               variant="outlined"
               startIcon={<ZoomOutOutlinedIcon />}
@@ -391,7 +437,7 @@ export default function CalendarPage() {
             >
               Zoom out
             </Button>
-            <Chip label={zoom.label} />
+            <Chip label={zoom.label} sx={{ alignSelf: { xs: "center", sm: "auto" } }} />
             <Button
               variant="outlined"
               endIcon={<ZoomInOutlinedIcon />}
@@ -404,8 +450,8 @@ export default function CalendarPage() {
         </Stack>
       </Paper>
 
-      <Paper sx={{ overflowX: "auto", overflowY: zoom.scroll ? "auto" : "hidden", maxHeight: zoom.scroll ? "calc(100vh - 300px)" : "none" }}>
-        <Box sx={{ minWidth: 1120 }}>
+      <Paper sx={{ overflowX: "auto", overflowY: zoom.scroll ? "auto" : "hidden", maxHeight: zoom.scroll ? { xs: "calc(100vh - 360px)", sm: "calc(100vh - 300px)" } : "none", width: "100%" }}>
+        <Box sx={{ minWidth: { xs: 980, lg: 1120 } }}>
           <Box sx={{ display: "grid", gridTemplateColumns: "72px repeat(7, minmax(140px, 1fr))", borderBottom: 1, borderColor: "divider" }}>
             <Box sx={{ p: 1.5, color: "text.secondary", fontWeight: 700 }}>Time</Box>
             {days.map((day) => (
@@ -414,56 +460,96 @@ export default function CalendarPage() {
               </Box>
             ))}
           </Box>
-          {visibleHours.map((hour) => (
-            <Box key={hour} sx={{ display: "grid", gridTemplateColumns: "72px repeat(7, minmax(140px, 1fr))", height: zoom.rowHeight, borderBottom: 1, borderColor: "divider" }}>
-              <Box sx={{ p: 1, color: "text.secondary", fontWeight: 700 }}>{String(hour).padStart(2, "0")}:00</Box>
-              {days.map((day) => {
-                const items = calendarItems.filter((item) => sameDay(item.startsAt, day) && item.startsAt.getHours() === hour);
-                return (
-                  <Box
-                    key={`${day.toISOString()}-${hour}`}
-                    onDoubleClick={() => createItem("event", createAt(day, hour))}
-                    sx={{ p: zoomIndex === 0 ? 0.5 : 1, borderLeft: 1, borderColor: "divider", bgcolor: sameDay(day, new Date()) ? "rgba(19, 111, 99, 0.04)" : "background.paper", overflow: "hidden" }}
-                  >
-                    <Stack spacing={0.75}>
-                      {items.map((item) => {
-                        const isEvent = item.type === "event";
-                        return (
-                          <Box
-                            key={`${item.type}-${item.id}`}
-                            onClick={() => openItem(item)}
-                            sx={{
-                              bgcolor: isEvent ? "#d7f4ee" : "#ede9fe",
-                              border: 1,
-                              borderColor: isEvent ? "#0f766e" : "#6d28d9",
-                              borderLeft: 4,
-                              borderRadius: 1,
-                              cursor: "pointer",
-                              p: zoomIndex === 0 ? 0.5 : 1
-                            }}
-                          >
-                            <Typography variant="caption" sx={{ color: isEvent ? "#0f766e" : "#6d28d9", display: "block", fontWeight: 700 }}>
-                              {timeFormatter.format(item.startsAt)}{item.endsAt ? `-${timeFormatter.format(item.endsAt)}` : ""} · {isEvent ? "Event" : "Announcement"}
-                            </Typography>
-                            <Typography variant="body2" sx={{ fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.title}</Typography>
-                            {zoomIndex > 0 && (
-                              <Typography variant="caption" color="text.secondary">
-                                {item.status}{isEvent && item.attendeeCount != null ? ` · ${item.attendeeCount}${item.capacity ? `/${item.capacity}` : ""} attending` : ""}
-                              </Typography>
-                            )}
-                          </Box>
-                        );
-                      })}
-                    </Stack>
-                  </Box>
-                );
-              })}
+          <Box sx={{ display: "grid", gridTemplateColumns: "72px repeat(7, minmax(140px, 1fr))", minHeight: calendarBodyHeight }}>
+            <Box sx={{ position: "relative", height: calendarBodyHeight }}>
+              {visibleHours.map((hour, index) => (
+                <Box key={hour} sx={{ height: zoom.rowHeight, borderBottom: 1, borderColor: "divider", p: 1, color: "text.secondary", fontWeight: 700 }}>
+                  {String(hour).padStart(2, "0")}:00
+                </Box>
+              ))}
             </Box>
-          ))}
+            {days.map((day) => {
+              const dayItems = layoutDayItems(calendarItems.filter((item) => sameDay(item.startsAt, day)));
+              return (
+                <Box
+                  key={day.toISOString()}
+                  sx={{
+                    position: "relative",
+                    height: calendarBodyHeight,
+                    borderLeft: 1,
+                    borderColor: "divider",
+                    bgcolor: sameDay(day, new Date()) ? "rgba(19, 111, 99, 0.04)" : "background.paper",
+                    overflow: "hidden"
+                  }}
+                >
+                  {visibleHours.map((hour, index) => (
+                    <Box
+                      key={`${day.toISOString()}-${hour}`}
+                      onDoubleClick={() => createItem("event", createAt(day, hour))}
+                      sx={{
+                        position: "absolute",
+                        top: index * zoom.rowHeight,
+                        left: 0,
+                        right: 0,
+                        height: zoom.rowHeight,
+                        borderBottom: 1,
+                        borderColor: "divider"
+                      }}
+                    />
+                  ))}
+                  {dayItems.map((item) => {
+                    const isEvent = item.type === "event";
+                    const startHour = hourValue(item.startsAt);
+                    const endDate = item.endsAt ?? new Date(item.startsAt.getTime() + 45 * 60 * 1000);
+                    const endHour = sameDay(endDate, item.startsAt) ? hourValue(endDate) : 24;
+                    const top = Math.max(4, (startHour - visibleStartHour) * zoom.rowHeight + 4);
+                    const bottom = Math.min(calendarBodyHeight - 4, (Math.min(endHour, visibleEndHour) - visibleStartHour) * zoom.rowHeight - 4);
+                    const height = Math.max(zoomIndex === 0 ? 34 : 54, bottom - top);
+                    const laneGap = 4;
+                    const width = `calc((100% - ${(item.laneCount + 1) * laneGap}px) / ${item.laneCount})`;
+                    const left = `calc(${laneGap}px + ${item.lane} * (${width} + ${laneGap}px))`;
+                    return (
+                      <Box
+                        key={`${item.type}-${item.id}`}
+                        onClick={() => openItem(item)}
+                        sx={{
+                          position: "absolute",
+                          top,
+                          left,
+                          width,
+                          height,
+                          bgcolor: isEvent ? "#d7f4ee" : "#ede9fe",
+                          border: 1,
+                          borderColor: isEvent ? "#0f766e" : "#6d28d9",
+                          borderLeft: 4,
+                          borderRadius: 1,
+                          cursor: "pointer",
+                          overflow: "hidden",
+                          p: zoomIndex === 0 ? 0.5 : 1
+                        }}
+                      >
+                        <Typography variant="body2" sx={{ color: isEvent ? "#0f766e" : "#6d28d9", fontWeight: 800, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                          {item.title}
+                        </Typography>
+                        <Typography variant="caption" sx={{ color: isEvent ? "#0f766e" : "#6d28d9", display: "block", fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                          {timeFormatter.format(item.startsAt)}{item.endsAt ? `-${timeFormatter.format(item.endsAt)}` : ""} · {isEvent ? "Event" : "Announcement"}
+                        </Typography>
+                        {zoomIndex > 0 && (
+                          <Typography variant="caption" color="text.secondary" sx={{ display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                            {item.status}{isEvent && item.attendeeCount != null ? ` · ${item.attendeeCount}${item.capacity ? `/${item.capacity}` : ""} attending` : ""}
+                          </Typography>
+                        )}
+                      </Box>
+                    );
+                  })}
+                </Box>
+              );
+            })}
+          </Box>
         </Box>
       </Paper>
 
-      <Dialog open={Boolean(creating)} onClose={() => !saving && setCreating(null)} maxWidth="md" fullWidth>
+      <Dialog open={Boolean(creating)} onClose={() => !saving && setCreating(null)} maxWidth="md" fullWidth sx={{ "& .MuiDialog-paper": { m: { xs: 1, sm: 4 }, width: { xs: "calc(100% - 16px)", sm: "100%" } } }}>
         <DialogTitle>Create {creating?.type === "event" ? "event" : "announcement"}</DialogTitle>
         <DialogContent>
           {creating && (
@@ -485,7 +571,7 @@ export default function CalendarPage() {
                 </FormControl>
               </Stack>
 
-              <Tabs value={activeLang} onChange={(_event, value: Lang) => setActiveLang(value)}>
+              <Tabs value={activeLang} onChange={(_event, value: Lang) => setActiveLang(value)} variant="scrollable" scrollButtons="auto">
                 {languages.map((language) => <Tab key={language.value} value={language.value} label={language.label} />)}
               </Tabs>
               <TextField
@@ -520,7 +606,7 @@ export default function CalendarPage() {
 
               <FormControl>
                 <FormLabel>Location</FormLabel>
-                <RadioGroup row value={creating.locationType} onChange={(event) => {
+                <RadioGroup row={false} sx={{ flexDirection: { xs: "column", sm: "row" } }} value={creating.locationType} onChange={(event) => {
                   const locationType = event.target.value as CalendarDraft["locationType"];
                   patchCreating({ locationType, locationMosqueId: locationType === "mosque" ? creating.locationMosqueId || mosqueId : creating.locationMosqueId });
                 }}>
@@ -577,7 +663,7 @@ export default function CalendarPage() {
             </Stack>
           )}
         </DialogContent>
-        <DialogActions>
+        <DialogActions sx={{ flexDirection: { xs: "column-reverse", sm: "row" }, alignItems: { xs: "stretch", sm: "center" }, px: { xs: 2, sm: 3 } }}>
           <Button disabled={saving} onClick={() => setCreating(null)}>Cancel</Button>
           <Button variant="contained" disabled={saving || uploading} onClick={() => void saveDraft()}>{saving ? "Saving..." : "Create"}</Button>
         </DialogActions>

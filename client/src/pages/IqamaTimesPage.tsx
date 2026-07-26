@@ -154,12 +154,12 @@ export default function IqamaTimesPage() {
       <Button component={Link} to="/mosques" startIcon={<ArrowBackOutlinedIcon />} sx={{ mb: 1 }}>
         Back to mosques
       </Button>
-      <Stack direction={{ xs: "column", md: "row" }} alignItems={{ md: "flex-end" }} justifyContent="space-between" spacing={2} sx={{ mb: 3 }}>
-        <Box>
-          <Typography variant="h4" sx={{ fontWeight: 700 }}>IQama Times</Typography>
+      <Stack direction={{ xs: "column", md: "row" }} alignItems={{ xs: "stretch", md: "flex-end" }} justifyContent="space-between" spacing={2} sx={{ mb: 3 }}>
+        <Box sx={{ minWidth: 0 }}>
+          <Typography variant="h4" sx={{ fontWeight: 700, fontSize: { xs: "2rem", sm: "2.125rem" } }}>IQama Times</Typography>
           <Typography color="text.secondary">Set minutes after Athan or an exact IQama time for each prayer.</Typography>
         </Box>
-        <FormControl size="small" sx={{ minWidth: { xs: "100%", sm: 280 } }}>
+        <FormControl size="small" sx={{ width: { xs: "100%", sm: 280 } }}>
           <InputLabel>Mosque</InputLabel>
           <Select
             label="Mosque"
@@ -178,9 +178,9 @@ export default function IqamaTimesPage() {
       {message && <Alert severity="success" onClose={() => setMessage("")} sx={{ mb: 2 }}>{message}</Alert>}
       {error && <Alert severity="error" onClose={() => setError("")} sx={{ mb: 2 }}>{error}</Alert>}
 
-      <Paper sx={{ p: { xs: 2, md: 3 }, maxWidth: 960 }}>
-        <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" spacing={2} sx={{ mb: 3 }}>
-          <Box>
+      <Paper sx={{ p: { xs: 2, md: 3 }, maxWidth: 960, width: "100%" }}>
+        <Stack direction={{ xs: "column", sm: "row" }} alignItems={{ xs: "stretch", sm: "center" }} justifyContent="space-between" spacing={2} sx={{ mb: 3 }}>
+          <Box sx={{ minWidth: 0 }}>
             <Typography variant="h6" sx={{ fontWeight: 700 }}>
               {hasSavedSettings ? "Edit IQama settings" : "Add IQama settings"}
             </Typography>
@@ -243,8 +243,8 @@ export default function IqamaTimesPage() {
                 </Grid>
               ))}
             </Grid>
-            <Stack direction="row" justifyContent="flex-end" sx={{ mt: 3 }}>
-              <Button variant="contained" disabled={!mosqueId || saving} onClick={() => void save()}>
+            <Stack direction={{ xs: "column", sm: "row" }} justifyContent="flex-end" sx={{ mt: 3 }}>
+              <Button variant="contained" disabled={!mosqueId || saving} onClick={() => void save()} sx={{ width: { xs: "100%", sm: "auto" } }}>
                 {saving ? "Saving…" : hasSavedSettings ? "Save changes" : "Add IQama settings"}
               </Button>
             </Stack>

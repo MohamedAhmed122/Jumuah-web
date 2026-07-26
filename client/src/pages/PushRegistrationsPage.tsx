@@ -25,10 +25,10 @@ export default function PushRegistrationsPage() {
 
   return (
     <>
-      <Typography variant="h4" sx={{ mb: 2 }}>Push Registrations</Typography>
-      <TextField label="Search" size="small" value={search} onChange={(event) => setSearch(event.target.value)} sx={{ mb: 2 }} />
-      <Paper sx={{ overflowX: "auto" }}>
-        <Table size="small">
+      <Typography variant="h4" sx={{ mb: 2, fontSize: { xs: "2rem", sm: "2.125rem" } }}>Push Registrations</Typography>
+      <TextField label="Search" size="small" value={search} onChange={(event) => setSearch(event.target.value)} fullWidth sx={{ mb: 2, maxWidth: { sm: 360 } }} />
+      <Paper sx={{ overflowX: "auto", width: "100%" }}>
+        <Table size="small" sx={{ minWidth: 760 }}>
           <TableHead>
             <TableRow>
               {["deviceId", "token", "lang", "active", "created", "updated"].map((head) => <TableCell key={head}>{head}</TableCell>)}

@@ -257,13 +257,13 @@ export default function AnnouncementsPage() {
   return (
     <>
       <Button component={Link} to="/mosques" startIcon={<ArrowBackOutlinedIcon />} sx={{ mb: 1 }}>Back to mosques</Button>
-      <Stack direction={{ xs: "column", md: "row" }} alignItems={{ md: "flex-end" }} justifyContent="space-between" spacing={2} sx={{ mb: 3 }}>
-        <Box>
-          <Typography variant="h4" sx={{ fontWeight: 700 }}>Announcements</Typography>
+      <Stack direction={{ xs: "column", md: "row" }} alignItems={{ xs: "stretch", md: "flex-end" }} justifyContent="space-between" spacing={2} sx={{ mb: 3 }}>
+        <Box sx={{ minWidth: 0 }}>
+          <Typography variant="h4" sx={{ fontWeight: 700, fontSize: { xs: "2rem", sm: "2.125rem" } }}>Announcements</Typography>
           <Typography color="text.secondary">{total} announcements for the selected mosque</Typography>
         </Box>
         <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5}>
-          <FormControl size="small" sx={{ minWidth: 260 }}>
+          <FormControl size="small" sx={{ width: { xs: "100%", sm: 260 } }}>
             <InputLabel>Mosque</InputLabel>
             <Select label="Mosque" value={mosqueId} onChange={(event) => {
               const nextMosqueId = event.target.value;
@@ -273,7 +273,7 @@ export default function AnnouncementsPage() {
               {mosques.map((mosque) => <MenuItem key={mosque.id} value={mosque.id}>{mosque.name}</MenuItem>)}
             </Select>
           </FormControl>
-          <Button variant="contained" startIcon={<CampaignOutlinedIcon />} disabled={!mosqueId} onClick={openCreate}>Create announcement</Button>
+          <Button variant="contained" startIcon={<CampaignOutlinedIcon />} disabled={!mosqueId} onClick={openCreate} sx={{ width: { xs: "100%", sm: "auto" } }}>Create announcement</Button>
         </Stack>
       </Stack>
 
@@ -282,8 +282,8 @@ export default function AnnouncementsPage() {
 
       <Paper sx={{ p: 2, mb: 2 }}>
         <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
-          <TextField size="small" label="Search" value={search} onChange={(event) => setSearch(event.target.value)} />
-          <FormControl size="small" sx={{ minWidth: 180 }}>
+          <TextField size="small" label="Search" value={search} onChange={(event) => setSearch(event.target.value)} fullWidth sx={{ maxWidth: { sm: 360 } }} />
+          <FormControl size="small" sx={{ width: { xs: "100%", sm: 180 } }}>
             <InputLabel>Status</InputLabel>
             <Select label="Status" value={status} onChange={(event) => setStatus(event.target.value)}>
               <MenuItem value="">All</MenuItem>
@@ -294,8 +294,8 @@ export default function AnnouncementsPage() {
         </Stack>
       </Paper>
 
-      <Paper sx={{ overflowX: "auto" }}>
-        <Table size="small">
+      <Paper sx={{ overflowX: "auto", width: "100%" }}>
+        <Table size="small" sx={{ minWidth: 900 }}>
           <TableHead>
             <TableRow>
               <TableCell>Announcement</TableCell>
@@ -346,7 +346,7 @@ export default function AnnouncementsPage() {
         </Table>
       </Paper>
 
-      <Dialog open={Boolean(editing)} onClose={() => !saving && setEditing(null)} maxWidth="md" fullWidth>
+      <Dialog open={Boolean(editing)} onClose={() => !saving && setEditing(null)} maxWidth="md" fullWidth sx={{ "& .MuiDialog-paper": { m: { xs: 1, sm: 4 }, width: { xs: "calc(100% - 16px)", sm: "100%" } } }}>
         <DialogTitle>{editing?.id ? "Edit announcement" : "Create announcement"}</DialogTitle>
         <DialogContent>
           {editing && (
@@ -368,7 +368,7 @@ export default function AnnouncementsPage() {
                 </FormControl>
               </Stack>
 
-              <Tabs value={activeLang} onChange={(_event, value: Lang) => setActiveLang(value)}>
+              <Tabs value={activeLang} onChange={(_event, value: Lang) => setActiveLang(value)} variant="scrollable" scrollButtons="auto">
                 {languages.map((language) => <Tab key={language.value} value={language.value} label={language.label} />)}
               </Tabs>
               <TextField
@@ -403,7 +403,7 @@ export default function AnnouncementsPage() {
 
               <FormControl>
                 <FormLabel>Event location</FormLabel>
-                <RadioGroup row value={editing.locationType} onChange={(event) => {
+                <RadioGroup row={false} sx={{ flexDirection: { xs: "column", sm: "row" } }} value={editing.locationType} onChange={(event) => {
                   const locationType = event.target.value as Announcement["locationType"];
                   patch({ locationType, locationMosqueId: locationType === "mosque" ? editing.locationMosqueId || mosqueId : editing.locationMosqueId });
                 }}>
@@ -460,7 +460,7 @@ export default function AnnouncementsPage() {
             </Stack>
           )}
         </DialogContent>
-        <DialogActions>
+        <DialogActions sx={{ flexDirection: { xs: "column-reverse", sm: "row" }, alignItems: { xs: "stretch", sm: "center" }, px: { xs: 2, sm: 3 } }}>
           <Button disabled={saving} onClick={() => setEditing(null)}>Cancel</Button>
           <Button variant="contained" disabled={saving || uploading} onClick={() => void save()}>{saving ? "Saving…" : "Save announcement"}</Button>
         </DialogActions>

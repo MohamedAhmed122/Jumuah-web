@@ -5,6 +5,8 @@ import mongoose from "mongoose";
 import { connectDb } from "../config/db.js";
 import { env } from "../config/env.js";
 import { Announcement } from "../models/Announcement.js";
+import { Event } from "../models/Event.js";
+import { EventAttendance } from "../models/EventAttendance.js";
 import { HalalPlace } from "../models/HalalPlace.js";
 import { Mosque } from "../models/Mosque.js";
 
@@ -21,10 +23,15 @@ function seedImage(filename: string) {
   return `${env.publicUrl.replace(/\/$/, "")}/uploads/${targetName}`;
 }
 
+const demoCalendarStart = new Date(2026, 6, 27);
+
 function futureDate(days: number, hour = 18) {
-  const date = new Date();
-  date.setDate(date.getDate() + days);
-  date.setHours(hour, 0, 0, 0);
+  const date = new Date(demoCalendarStart);
+  const offset = ((Math.trunc(days) - 1) % 7 + 7) % 7;
+  const wholeHour = Math.floor(hour);
+  const minutes = Math.round((hour - wholeHour) * 60);
+  date.setDate(demoCalendarStart.getDate() + offset);
+  date.setHours(wholeHour, minutes, 0, 0);
   return date;
 }
 
@@ -123,35 +130,38 @@ const panevezys = mosqueSeeds[4].name;
 
 const announcementSeeds = [
   {
-    title: { en: "Friday family gathering", ru: "Пятничная семейная встреча" },
+    title: { en: "Friday family gathering", ru: "Пятничная семейная встреча", lt: "Penktadienio šeimų susitikimas" },
     image: seedImage("Mosque20.jpg"),
     descriptionHtml: {
       en: "<p>Join our community after the second Jummah prayer for a shared meal, a short reminder and activities for children. Families and newcomers are warmly welcome.</p>",
-      ru: "<p>Присоединяйтесь к общине после второго пятничного намаза: общий обед, короткое напоминание и занятия для детей. Семьи и новые участники всегда желанны.</p>"
+      ru: "<p>Присоединяйтесь к общине после второго пятничного намаза: общий обед, короткое напоминание и занятия для детей. Семьи и новые участники всегда желанны.</p>",
+      lt: "<p>Prisijunkite prie bendruomenės po antros džumos maldos bendriems pietums, trumpam priminimui ir vaikų veikloms.</p>"
     },
-    mosqueIds: [mosqueId(vilnius), mosqueId(kaunas)],
+    mosqueIds: [mosqueId(kaunas)],
     date: new Date(), eventDate: futureDate(5, 15), endDate: futureDate(5, 18),
-    locationType: "mosque", locationMosqueId: mosqueId(vilnius), status: "published",
+    locationType: "mosque", locationMosqueId: mosqueId(kaunas), status: "published",
     sendPushOnPublish: false, hideAfterEndDate: true, deleteAfterEndDate: false, isPinned: true
   },
   {
-    title: { en: "Quran circle for beginners", ru: "Кружок Корана для начинающих" },
+    title: { en: "Quran circle for beginners", ru: "Кружок Корана для начинающих", lt: "Korano ratas pradedantiesiems" },
     image: seedImage("Quran1.jpg"),
     descriptionHtml: {
       en: "<p>A gentle weekly circle for adults beginning their Quran journey. We will practise Arabic letters, pronunciation and short surahs in a supportive group.</p>",
-      ru: "<p>Еженедельный кружок для взрослых, начинающих изучать Коран. Будем практиковать арабские буквы, произношение и короткие суры в дружеской атмосфере.</p>"
+      ru: "<p>Еженедельный кружок для взрослых, начинающих изучать Коран. Будем практиковать арабские буквы, произношение и короткие суры в дружеской атмосфере.</p>",
+      lt: "<p>Švelnus savaitinis ratas suaugusiesiems, pradedantiems Korano mokymosi kelią.</p>"
     },
-    mosqueIds: [mosqueId(vilnius)],
+    mosqueIds: [mosqueId(kaunas)],
     date: new Date(), eventDate: futureDate(9, 18), endDate: futureDate(9, 20),
-    locationType: "mosque", locationMosqueId: mosqueId(vilnius), status: "published",
+    locationType: "mosque", locationMosqueId: mosqueId(kaunas), status: "published",
     sendPushOnPublish: false, hideAfterEndDate: true, deleteAfterEndDate: false, isPinned: true
   },
   {
-    title: { en: "Youth Quran recitation evening", ru: "Вечер чтения Корана для молодёжи" },
+    title: { en: "Youth Quran recitation evening", ru: "Вечер чтения Корана для молодёжи", lt: "Jaunimo Korano skaitymo vakaras" },
     image: seedImage("Quran10.jpg"),
     descriptionHtml: {
       en: "<p>An evening for young Muslims to recite together, improve confidence and meet other students. Tea and light refreshments will be provided.</p>",
-      ru: "<p>Вечер для мусульманской молодёжи: совместное чтение, развитие уверенности и знакомство с другими учащимися. Будут чай и лёгкие угощения.</p>"
+      ru: "<p>Вечер для мусульманской молодёжи: совместное чтение, развитие уверенности и знакомство с другими учащимися. Будут чай и лёгкие угощения.</p>",
+      lt: "<p>Vakaras jauniesiems musulmonams kartu skaityti, stiprinti pasitikėjimą ir susipažinti su kitais mokiniais.</p>"
     },
     mosqueIds: [mosqueId(kaunas), mosqueId(klaipeda)],
     date: new Date(), eventDate: futureDate(12, 18), endDate: futureDate(12, 20),
@@ -159,11 +169,12 @@ const announcementSeeds = [
     sendPushOnPublish: false, hideAfterEndDate: true, deleteAfterEndDate: false, isPinned: false
   },
   {
-    title: { en: "Practical Tajwid workshop", ru: "Практический семинар по таджвиду" },
+    title: { en: "Practical Tajwid workshop", ru: "Практический семинар по таджвиду", lt: "Praktinės tadžvydo dirbtuvės" },
     image: seedImage("Quran13.jpg"),
     descriptionHtml: {
       en: "<p>A practical workshop covering the most common Tajwid rules with guided exercises and individual feedback. Please bring a Quran and notebook.</p>",
-      ru: "<p>Практический семинар по основным правилам таджвида с упражнениями и индивидуальной обратной связью. Возьмите с собой Коран и тетрадь.</p>"
+      ru: "<p>Практический семинар по основным правилам таджвида с упражнениями и индивидуальной обратной связью. Возьмите с собой Коран и тетрадь.</p>",
+      lt: "<p>Praktinės dirbtuvės apie dažniausias tadžvydo taisykles su pratimais ir individualiu grįžtamuoju ryšiu.</p>"
     },
     mosqueIds: [mosqueId(klaipeda)],
     date: new Date(), eventDate: futureDate(16, 11), endDate: futureDate(16, 14),
@@ -171,13 +182,14 @@ const announcementSeeds = [
     sendPushOnPublish: false, hideAfterEndDate: true, deleteAfterEndDate: false, isPinned: false
   },
   {
-    title: { en: "Community open day", ru: "День открытых дверей общины" },
+    title: { en: "Community open day", ru: "День открытых дверей общины", lt: "Bendruomenės atvirų durų diena" },
     image: seedImage("mosque1.jpg"),
     descriptionHtml: {
       en: "<p>Invite friends and neighbours to visit the centre, learn about Muslim life in Lithuania and enjoy a guided tour with refreshments.</p>",
-      ru: "<p>Пригласите друзей и соседей посетить центр, узнать о жизни мусульман в Литве и принять участие в экскурсии с угощением.</p>"
+      ru: "<p>Пригласите друзей и соседей посетить центр, узнать о жизни мусульман в Литве и принять участие в экскурсии с угощением.</p>",
+      lt: "<p>Pakvieskite draugus ir kaimynus apsilankyti centre, sužinoti apie musulmonų gyvenimą Lietuvoje ir dalyvauti ekskursijoje.</p>"
     },
-    mosqueIds: mosqueSeeds.map((mosque) => mosqueId(mosque.name)),
+    mosqueIds: [mosqueId(kaunas), mosqueId(klaipeda), mosqueId(siauliai), mosqueId(panevezys)],
     date: new Date(), eventDate: futureDate(20, 12), endDate: futureDate(20, 17),
     locationType: "outside",
     outsideLocation: { address: "Demo Community Square, Vilnius", lat: 54.6872, lng: 25.2797 },
@@ -185,11 +197,12 @@ const announcementSeeds = [
     deleteAfterEndDate: false, isPinned: false
   },
   {
-    title: { en: "Sisters Quran reflection circle", ru: "Женский кружок размышления над Кораном" },
+    title: { en: "Sisters Quran reflection circle", ru: "Женский кружок размышления над Кораном", lt: "Seserų Korano apmąstymų ratas" },
     image: seedImage("Quran2.jpg"),
     descriptionHtml: {
       en: "<p>A monthly sisters-only gathering to read selected verses, reflect together and strengthen community bonds in a private and welcoming space.</p>",
-      ru: "<p>Ежемесячная женская встреча для чтения избранных аятов, совместных размышлений и укрепления связей в уютной обстановке.</p>"
+      ru: "<p>Ежемесячная женская встреча для чтения избранных аятов, совместных размышлений и укрепления связей в уютной обстановке.</p>",
+      lt: "<p>Mėnesinis tik seserims skirtas susitikimas skaityti pasirinktas ajas, apmąstyti ir stiprinti bendruomenės ryšius.</p>"
     },
     mosqueIds: [mosqueId(siauliai), mosqueId(panevezys)],
     date: new Date(), eventDate: futureDate(24, 17), endDate: futureDate(24, 19),
@@ -197,11 +210,12 @@ const announcementSeeds = [
     sendPushOnPublish: false, hideAfterEndDate: true, deleteAfterEndDate: false, isPinned: false
   },
   {
-    title: { en: "Children's Quran morning", ru: "Детское утро Корана" },
+    title: { en: "Children's Quran morning", ru: "Детское утро Корана", lt: "Vaikų Korano rytas" },
     image: seedImage("Quran3.jpg"),
     descriptionHtml: {
       en: "<p>A cheerful Saturday programme with short-surah practice, Islamic stories, creative activities and a light lunch for children aged 6 to 12.</p>",
-      ru: "<p>Субботняя программа для детей 6–12 лет: короткие суры, исламские истории, творческие занятия и лёгкий обед.</p>"
+      ru: "<p>Субботняя программа для детей 6–12 лет: короткие суры, исламские истории, творческие занятия и лёгкий обед.</p>",
+      lt: "<p>Linksma šeštadienio programa 6-12 metų vaikams: trumpos suros, islamo istorijos, kūrybinės veiklos ir lengvi pietūs.</p>"
     },
     mosqueIds: [mosqueId(panevezys)],
     date: new Date(), eventDate: futureDate(28, 10), endDate: futureDate(28, 13),
@@ -212,6 +226,190 @@ const announcementSeeds = [
 
 for (const announcement of announcementSeeds) {
   await Announcement.updateOne({ "title.en": announcement.title.en }, { $set: announcement }, { upsert: true });
+}
+
+const vilniusAnnouncementSeeds = [
+  {
+    title: { en: "Ramadan volunteer briefing", ru: "Встреча волонтёров Рамадана", lt: "Ramadano savanorių susitikimas" },
+    image: seedImage("muslims1.jpg"),
+    descriptionHtml: {
+      en: "<p>Short briefing for volunteers helping with iftar setup, guest welcome and evening cleanup.</p>",
+      ru: "<p>Короткая встреча волонтёров, которые помогают с ифтаром, встречей гостей и уборкой.</p>",
+      lt: "<p>Trumpas susitikimas savanoriams, padedantiems su iftaro paruošimu, svečių priėmimu ir tvarkymu.</p>"
+    },
+    days: 1, hour: 9, duration: 1, pinned: true
+  },
+  {
+    title: { en: "Food parcel packing notice", ru: "Упаковка продуктовых наборов", lt: "Maisto paketų ruošimo pranešimas" },
+    image: seedImage("market1.jpg"),
+    descriptionHtml: {
+      en: "<p>Community members are invited to help prepare food parcels for families before the weekend.</p>",
+      ru: "<p>Приглашаем участников общины помочь подготовить продуктовые наборы для семей перед выходными.</p>",
+      lt: "<p>Kviečiame bendruomenės narius padėti paruošti maisto paketus šeimoms prieš savaitgalį.</p>"
+    },
+    days: 1, hour: 14, duration: 1.5, pinned: false
+  },
+  {
+    title: { en: "Jummah parking reminder", ru: "Напоминание о парковке на джума", lt: "Priminimas apie parkavimą per džumą" },
+    image: seedImage("mosque3.jpg"),
+    descriptionHtml: {
+      en: "<p>Please use nearby public parking spaces and keep building entrances clear during Friday prayer.</p>",
+      ru: "<p>Пожалуйста, пользуйтесь ближайшими общественными парковками и не блокируйте входы во время пятничной молитвы.</p>",
+      lt: "<p>Prašome naudotis netoliese esančiomis viešomis parkavimo vietomis ir neužstatyti įėjimų per penktadienio maldą.</p>"
+    },
+    days: 2, hour: 11, duration: 1, pinned: true
+  },
+  {
+    title: { en: "New Lithuanian class group", ru: "Новая группа литовского языка", lt: "Nauja lietuvių kalbos grupė" },
+    image: seedImage("muslims2.jpg"),
+    descriptionHtml: {
+      en: "<p>A new beginner Lithuanian group is opening for community members. Registration will be announced after Maghrib.</p>",
+      ru: "<p>Открывается новая группа литовского языка для начинающих. Регистрация будет объявлена после магриба.</p>",
+      lt: "<p>Bendruomenės nariams atidaroma nauja pradedančiųjų lietuvių kalbos grupė. Registracija bus paskelbta po maghribo.</p>"
+    },
+    days: 2, hour: 17, duration: 1, pinned: false
+  },
+  {
+    title: { en: "Sisters room maintenance", ru: "Обслуживание женской комнаты", lt: "Moterų kambario priežiūra" },
+    image: seedImage("mosque1.jpg"),
+    descriptionHtml: {
+      en: "<p>The sisters room will be refreshed after Asr. Please collect personal items before the maintenance window.</p>",
+      ru: "<p>Женская комната будет обновляться после асра. Пожалуйста, заберите личные вещи заранее.</p>",
+      lt: "<p>Moterų kambarys bus tvarkomas po asro. Prašome iš anksto pasiimti asmeninius daiktus.</p>"
+    },
+    days: 3, hour: 10, duration: 1.5, pinned: false
+  },
+  {
+    title: { en: "Children's library update", ru: "Обновление детской библиотеки", lt: "Vaikų bibliotekos atnaujinimas" },
+    image: seedImage("Quran3.jpg"),
+    descriptionHtml: {
+      en: "<p>New children's books and Quran learning materials are now available in the community library.</p>",
+      ru: "<p>В библиотеке общины появились новые детские книги и материалы для изучения Корана.</p>",
+      lt: "<p>Bendruomenės bibliotekoje jau yra naujų vaikų knygų ir Korano mokymosi priemonių.</p>"
+    },
+    days: 3, hour: 15, duration: 1, pinned: false
+  },
+  {
+    title: { en: "Guest speaker after Isha", ru: "Гость после иша", lt: "Svečias po išos" },
+    image: seedImage("Mosque20.jpg"),
+    descriptionHtml: {
+      en: "<p>A visiting speaker will share a short reminder after Isha prayer. Everyone is welcome.</p>",
+      ru: "<p>Приглашённый спикер проведёт короткое напоминание после молитвы иша. Приглашаются все.</p>",
+      lt: "<p>Svečias po išos maldos pasidalins trumpu priminimu. Laukiami visi.</p>"
+    },
+    days: 4, hour: 12, duration: 1.5, pinned: true
+  },
+  {
+    title: { en: "Community cleaning morning", ru: "Утро уборки общины", lt: "Bendruomenės tvarkymosi rytas" },
+    image: seedImage("mosque5.jpg"),
+    descriptionHtml: {
+      en: "<p>Join the morning cleaning team to prepare the centre for the coming week.</p>",
+      ru: "<p>Присоединяйтесь к утренней команде уборки, чтобы подготовить центр к новой неделе.</p>",
+      lt: "<p>Prisijunkite prie rytinės tvarkymo komandos ir paruoškime centrą ateinančiai savaitei.</p>"
+    },
+    days: 5, hour: 10, duration: 2, pinned: false
+  },
+  {
+    title: { en: "Youth study corner notice", ru: "Уголок для занятий молодёжи", lt: "Jaunimo mokymosi kampelio pranešimas" },
+    image: seedImage("Quran10.jpg"),
+    descriptionHtml: {
+      en: "<p>The youth study corner will be open on weekday evenings for homework and quiet reading.</p>",
+      ru: "<p>Учебный уголок для молодёжи будет открыт по вечерам в будние дни для домашних заданий и чтения.</p>",
+      lt: "<p>Jaunimo mokymosi kampelis darbo dienų vakarais bus atviras namų darbams ir ramiam skaitymui.</p>"
+    },
+    days: 6, hour: 12, duration: 2, pinned: false
+  },
+  {
+    title: { en: "Eid planning committee", ru: "Комитет подготовки к Иду", lt: "Eido planavimo komitetas" },
+    image: seedImage("muslims1.jpg"),
+    descriptionHtml: {
+      en: "<p>The Eid planning committee will meet to review venue, volunteer and family activity plans.</p>",
+      ru: "<p>Комитет подготовки к Иду обсудит площадку, волонтёров и семейную программу.</p>",
+      lt: "<p>Eido planavimo komitetas aptars vietą, savanorius ir šeimų veiklas.</p>"
+    },
+    days: 7, hour: 16, duration: 1.5, pinned: false
+  }
+] as const;
+
+for (const announcement of vilniusAnnouncementSeeds) {
+  await Announcement.updateOne(
+    { "title.en": announcement.title.en },
+    {
+      $set: {
+        title: announcement.title,
+        image: announcement.image,
+        descriptionHtml: announcement.descriptionHtml,
+        mosqueIds: [mosqueId(vilnius)],
+        date: new Date(),
+        eventDate: futureDate(announcement.days, announcement.hour),
+        endDate: futureDate(announcement.days, announcement.hour + announcement.duration),
+        locationType: "mosque",
+        locationMosqueId: mosqueId(vilnius),
+        status: "published",
+        sendPushOnPublish: false,
+        hideAfterEndDate: true,
+        deleteAfterEndDate: false,
+        isPinned: announcement.pinned
+      }
+    },
+    { upsert: true }
+  );
+}
+
+const vilniusEventSeeds = [
+  ["Community iftar evening", "Общинный ифтар", "Bendruomenės iftaras", "A warm evening meal for families, students and newcomers.", "Тёплый вечерний ифтар для семей, студентов и новых участников.", "Šiltas vakarinis iftaras šeimoms, studentams ir naujiems nariams.", "muslims2.jpg", 2, 19, 2, 120, true],
+  ["Weekend Quran for children", "Коран для детей по выходным", "Savaitgalio Koranas vaikams", "A friendly class with short surahs, stories and creative activities.", "Дружеское занятие с короткими сурами, историями и творческими заданиями.", "Draugiška pamoka su trumpomis suromis, istorijomis ir kūrybinėmis veiklomis.", "Quran2.jpg", 3, 10, 2, 40, true],
+  ["New Muslim welcome circle", "Встреча для новых мусульман", "Naujų musulmonų pažintinis ratas", "A gentle introduction circle with space for questions and community support.", "Спокойная вводная встреча с вопросами и поддержкой общины.", "Ramus pažintinis susitikimas su klausimais ir bendruomenės palaikymu.", "mosque1.jpg", 4, 18, 1.5, 35, true],
+  ["Sisters tea and reflection", "Чай и размышления для сестёр", "Seserų arbata ir apmąstymai", "A private sisters gathering with tea, reflection and mutual support.", "Закрытая встреча сестёр с чаем, размышлениями и поддержкой.", "Privatus seserų susitikimas su arbata, apmąstymais ir palaikymu.", "Quran1.jpg", 5, 17, 2, 45, true],
+  ["Youth football meetup", "Футбольная встреча молодёжи", "Jaunimo futbolo susitikimas", "Outdoor youth football followed by a short reminder and snacks.", "Футбол для молодёжи на улице, затем короткое напоминание и закуски.", "Jaunimo futbolas lauke, po jo trumpas priminimas ir užkandžiai.", "muslims1.jpg", 6, 14, 2, 30, true],
+  ["Family halaqa night", "Семейная халяка", "Šeimos halakos vakaras", "A family-friendly study circle with parallel activities for children.", "Семейный кружок знаний с отдельными занятиями для детей.", "Šeimai tinkamas mokymosi ratas su atskiromis veiklomis vaikams.", "Mosque20.jpg", 7, 18, 2, 80, true],
+  ["Arabic letters intensive", "Интенсив по арабским буквам", "Arabų raidžių intensyvas", "A focused beginner session for adults learning Arabic letters.", "Интенсивное занятие для взрослых, изучающих арабские буквы.", "Koncentruota pradedančiųjų pamoka suaugusiesiems, mokantis arabų raidžių.", "Quran13.jpg", 8, 12, 3, 25, true],
+  ["Community picnic planning", "Планирование общинного пикника", "Bendruomenės pikniko planavimas", "Planning meeting for summer picnic volunteers and activity leads.", "Встреча по планированию летнего пикника, волонтёров и активностей.", "Vasaros pikniko savanorių ir veiklų planavimo susitikimas.", "mosque3.jpg", 9, 16, 1.5, 20, true],
+  ["Charity collection day", "День благотворительного сбора", "Labdaros rinkimo diena", "Bring gently used clothes and household items for local families.", "Приносите аккуратно использованную одежду и вещи для местных семей.", "Atneškite tvarkingų drabužių ir buities daiktų vietos šeimoms.", "market2.jpg", 10, 11, 4, 150, true],
+  ["Tajwid practice evening", "Вечер практики таджвида", "Tadžvydo praktikos vakaras", "Guided recitation practice with small-group feedback.", "Практика чтения с наставником и обратной связью в малых группах.", "Vadovaujama recitavimo praktika su grįžtamuoju ryšiu mažose grupėse.", "Quran10.jpg", 11, 19, 1.5, 35, true]
+] as const;
+
+for (const [titleEn, titleRu, titleLt, descEn, descRu, descLt, imageFile, days, hour, duration, capacity, registrationEnabled] of vilniusEventSeeds) {
+  const event = await Event.findOneAndUpdate(
+    { "title.en": titleEn },
+    {
+      $set: {
+        title: { en: titleEn, ru: titleRu, lt: titleLt },
+        image: seedImage(imageFile),
+        descriptionHtml: {
+          en: `<p>${descEn}</p>`,
+          ru: `<p>${descRu}</p>`,
+          lt: `<p>${descLt}</p>`
+        },
+        mosqueIds: [mosqueId(vilnius)],
+        eventDate: futureDate(days, hour),
+        endDate: futureDate(days, hour + duration),
+        locationType: "mosque",
+        locationMosqueId: mosqueId(vilnius),
+        status: "published",
+        registrationEnabled,
+        capacity,
+        isPinned: days <= 4
+      }
+    },
+    { upsert: true, new: true }
+  );
+
+  const attendeeTarget = Math.min(Number(capacity), 8 + Number(days));
+  for (let index = 1; index <= attendeeTarget; index += 1) {
+    await EventAttendance.updateOne(
+      { eventId: event._id, deviceId: `demo-vilnius-${String(days).padStart(2, "0")}-${String(index).padStart(2, "0")}` },
+      {
+        $set: {
+          lang: index % 3 === 0 ? "lt" : index % 2 === 0 ? "ru" : "en",
+          isActive: true,
+          joinedAt: futureDate(days - 1, 12)
+        },
+        $unset: { cancelledAt: "" }
+      },
+      { upsert: true }
+    );
+  }
 }
 
 const halalSeeds = [
@@ -265,5 +463,5 @@ for (const [name, category, imageFile, city, lat, lng, foodCategories, averageMe
   );
 }
 
-console.log(`Demo content ready: ${mosqueSeeds.length} mosques, ${announcementSeeds.length} announcements, ${halalSeeds.length} halal places.`);
+console.log(`Demo content ready: ${mosqueSeeds.length} mosques, ${announcementSeeds.length + vilniusAnnouncementSeeds.length} announcements, ${vilniusEventSeeds.length} events, ${halalSeeds.length} halal places.`);
 await mongoose.disconnect();

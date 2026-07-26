@@ -137,27 +137,27 @@ export default function ResourcePage({ resource }: { resource: string }) {
 
   return (
     <>
-      <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 2 }}>
-        <Box>
-          <Typography variant="h4">{config.title}</Typography>
+      <Stack direction={{ xs: "column", sm: "row" }} alignItems={{ xs: "stretch", sm: "center" }} justifyContent="space-between" spacing={2} sx={{ mb: 2 }}>
+        <Box sx={{ minWidth: 0 }}>
+          <Typography variant="h4" sx={{ fontSize: { xs: "2rem", sm: "2.125rem" }, wordBreak: "break-word" }}>{config.title}</Typography>
           <Typography color="text.secondary">{total} records</Typography>
         </Box>
-        <Stack direction="row" spacing={1}>
+        <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
           {resource === "quiz-questions" && (
-            <Button component="label" variant="outlined">
+            <Button component="label" variant="outlined" sx={{ width: { xs: "100%", sm: "auto" } }}>
               Import JSON
               <input hidden type="file" accept="application/json" onChange={(event) => event.target.files?.[0] && void importQuiz(event.target.files[0])} />
             </Button>
           )}
-          <Button variant="contained" onClick={openCreate}>Create</Button>
+          <Button variant="contained" onClick={openCreate} sx={{ width: { xs: "100%", sm: "auto" } }}>Create</Button>
         </Stack>
       </Stack>
 
       <Paper sx={{ p: 2, mb: 2 }}>
         <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
-          <TextField label="Search" value={search} onChange={(event) => setSearch(event.target.value)} size="small" />
+          <TextField label="Search" value={search} onChange={(event) => setSearch(event.target.value)} size="small" fullWidth sx={{ maxWidth: { md: 360 } }} />
           {config.filters?.map((field) => (
-            <FormControl size="small" sx={{ minWidth: 180 }} key={field.name}>
+            <FormControl size="small" sx={{ width: { xs: "100%", md: 180 } }} key={field.name}>
               <InputLabel>{field.label}</InputLabel>
               <Select label={field.label} value={filters[field.name] ?? ""} onChange={(event) => setFilters((current) => ({ ...current, [field.name]: event.target.value }))}>
                 <MenuItem value="">All</MenuItem>
@@ -168,8 +168,8 @@ export default function ResourcePage({ resource }: { resource: string }) {
         </Stack>
       </Paper>
 
-      <Paper sx={{ overflowX: "auto" }}>
-        <Table size="small">
+      <Paper sx={{ overflowX: "auto", width: "100%" }}>
+        <Table size="small" sx={{ minWidth: 760 }}>
           <TableHead>
             <TableRow>
               {config.columns.map((column) => <TableCell key={column}>{column}</TableCell>)}
@@ -206,7 +206,7 @@ export default function ResourcePage({ resource }: { resource: string }) {
         </Table>
       </Paper>
 
-      <Dialog open={Boolean(settingsMosque)} onClose={() => setSettingsMosque(null)} maxWidth="sm" fullWidth>
+      <Dialog open={Boolean(settingsMosque)} onClose={() => setSettingsMosque(null)} maxWidth="sm" fullWidth sx={{ "& .MuiDialog-paper": { m: { xs: 1, sm: 4 }, width: { xs: "calc(100% - 16px)", sm: "100%" } } }}>
         <DialogTitle sx={{ pb: 1 }}>Mosque settings</DialogTitle>
         <DialogContent>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
@@ -249,13 +249,13 @@ export default function ResourcePage({ resource }: { resource: string }) {
         </DialogActions>
       </Dialog>
 
-      <Dialog open={Boolean(editing)} onClose={() => setEditing(null)} maxWidth="md" fullWidth>
+      <Dialog open={Boolean(editing)} onClose={() => setEditing(null)} maxWidth="md" fullWidth sx={{ "& .MuiDialog-paper": { m: { xs: 1, sm: 4 }, width: { xs: "calc(100% - 16px)", sm: "100%" } } }}>
         <DialogTitle>{editing?.id ? "Edit" : "Create"} {config.title}</DialogTitle>
         <DialogContent>
           <Stack spacing={2} sx={{ mt: 1 }}>
             {error && <Alert severity="error">{error}</Alert>}
             {config.fields.some((field) => field.type.startsWith("localized")) && (
-              <Tabs value={activeLang} onChange={(_event, value: Lang) => setActiveLang(value)}>
+              <Tabs value={activeLang} onChange={(_event, value: Lang) => setActiveLang(value)} variant="scrollable" scrollButtons="auto">
                 {languages.map((language) => <Tab key={language.value} value={language.value} label={language.label} />)}
               </Tabs>
             )}
@@ -277,7 +277,7 @@ export default function ResourcePage({ resource }: { resource: string }) {
             })}
           </Stack>
         </DialogContent>
-        <DialogActions>
+        <DialogActions sx={{ flexDirection: { xs: "column-reverse", sm: "row" }, alignItems: { xs: "stretch", sm: "center" }, px: { xs: 2, sm: 3 } }}>
           <Button onClick={() => setEditing(null)}>Cancel</Button>
           <Button variant="contained" onClick={() => void save()}>Save</Button>
         </DialogActions>

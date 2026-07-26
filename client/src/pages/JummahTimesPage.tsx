@@ -139,12 +139,12 @@ export default function JummahTimesPage() {
       <Button component={Link} to="/mosques" startIcon={<ArrowBackOutlinedIcon />} sx={{ mb: 1 }}>
         Back to mosques
       </Button>
-      <Stack direction={{ xs: "column", md: "row" }} alignItems={{ md: "flex-end" }} justifyContent="space-between" spacing={2} sx={{ mb: 3 }}>
-        <Box>
-          <Typography variant="h4" sx={{ fontWeight: 700 }}>Jummah Times</Typography>
+      <Stack direction={{ xs: "column", md: "row" }} alignItems={{ xs: "stretch", md: "flex-end" }} justifyContent="space-between" spacing={2} sx={{ mb: 3 }}>
+        <Box sx={{ minWidth: 0 }}>
+          <Typography variant="h4" sx={{ fontWeight: 700, fontSize: { xs: "2rem", sm: "2.125rem" } }}>Jummah Times</Typography>
           <Typography color="text.secondary">Set one, two or three Friday prayer times for this mosque.</Typography>
         </Box>
-        <FormControl size="small" sx={{ minWidth: { xs: "100%", sm: 280 } }}>
+        <FormControl size="small" sx={{ width: { xs: "100%", sm: 280 } }}>
           <InputLabel>Mosque</InputLabel>
           <Select
             label="Mosque"
@@ -163,9 +163,9 @@ export default function JummahTimesPage() {
       {message && <Alert severity="success" onClose={() => setMessage("")} sx={{ mb: 2 }}>{message}</Alert>}
       {error && <Alert severity="error" onClose={() => setError("")} sx={{ mb: 2 }}>{error}</Alert>}
 
-      <Paper sx={{ p: { xs: 2, md: 3 }, maxWidth: 960 }}>
-        <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" spacing={2} sx={{ mb: 3 }}>
-          <Box>
+      <Paper sx={{ p: { xs: 2, md: 3 }, maxWidth: 960, width: "100%" }}>
+        <Stack direction={{ xs: "column", sm: "row" }} alignItems={{ xs: "stretch", sm: "center" }} justifyContent="space-between" spacing={2} sx={{ mb: 3 }}>
+          <Box sx={{ minWidth: 0 }}>
             <Typography variant="h6" sx={{ fontWeight: 700 }}>
               {hasSavedSchedule ? "Edit Jummah schedule" : "Add Jummah schedule"}
             </Typography>
@@ -235,7 +235,7 @@ export default function JummahTimesPage() {
 
             <Stack spacing={2}>
               {times.map((time, index) => (
-                <Box key={index} sx={{ alignItems: "flex-start", border: 1, borderColor: "divider", borderRadius: 1.5, display: "flex", gap: 1, p: 2 }}>
+                <Box key={index} sx={{ alignItems: { xs: "stretch", sm: "flex-start" }, border: 1, borderColor: "divider", borderRadius: 1.5, display: "flex", flexDirection: { xs: "column", sm: "row" }, gap: 1, p: 2 }}>
                   <TextField
                     fullWidth
                     type="time"
@@ -247,7 +247,7 @@ export default function JummahTimesPage() {
                     helperText={fieldErrors[`time-${index}`] ?? "Jummah start time"}
                   />
                   {times.length > 1 && (
-                    <IconButton aria-label={`Remove ${serviceNames[index]}`} color="error" onClick={() => removeTime(index)} sx={{ mt: 0.75 }}>
+                    <IconButton aria-label={`Remove ${serviceNames[index]}`} color="error" onClick={() => removeTime(index)} sx={{ mt: { sm: 0.75 }, alignSelf: { xs: "flex-end", sm: "auto" } }}>
                       <DeleteOutlineOutlinedIcon />
                     </IconButton>
                   )}
@@ -261,10 +261,11 @@ export default function JummahTimesPage() {
                 startIcon={<AddOutlinedIcon />}
                 disabled={times.length >= 3}
                 onClick={() => setTimes((current) => [...current, ""])}
+                sx={{ width: { xs: "100%", sm: "auto" } }}
               >
                 {times.length === 1 ? "Add second Jummah" : "Add third Jummah"}
               </Button>
-              <Button variant="contained" disabled={!mosqueId || saving} onClick={() => void save()}>
+              <Button variant="contained" disabled={!mosqueId || saving} onClick={() => void save()} sx={{ width: { xs: "100%", sm: "auto" } }}>
                 {saving ? "Saving…" : hasSavedSchedule ? "Save changes" : "Add Jummah schedule"}
               </Button>
             </Stack>

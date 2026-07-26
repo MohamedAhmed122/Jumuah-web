@@ -21,13 +21,13 @@ export default function DashboardPage() {
 
   return (
     <>
-      <Typography variant="h4" sx={{ mb: 3 }}>Dashboard</Typography>
+      <Typography variant="h4" sx={{ mb: 3, fontSize: { xs: "2rem", sm: "2.125rem" } }}>Dashboard</Typography>
       <Grid container spacing={2}>
         {Object.entries(labels).map(([key, label]) => (
           <Grid item xs={12} sm={6} md={4} key={key}>
-            <Paper sx={{ p: 3 }}>
+            <Paper sx={{ p: { xs: 2, sm: 3 }, minHeight: 132 }}>
               <Typography color="text.secondary">{label}</Typography>
-              <Typography variant="h3">{stats[key] ?? "-"}</Typography>
+              <Typography variant="h3" sx={{ fontSize: { xs: "2.75rem", sm: "3rem" } }}>{stats[key] ?? "-"}</Typography>
             </Paper>
           </Grid>
         ))}

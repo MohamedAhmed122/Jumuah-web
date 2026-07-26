@@ -388,12 +388,12 @@ export default function PrayerTimesPage() {
       <Button component={Link} to="/mosques" startIcon={<ArrowBackOutlinedIcon />} sx={{ mb: 1 }}>
         Back to mosques
       </Button>
-      <Stack direction={{ xs: "column", md: "row" }} alignItems={{ md: "flex-end" }} justifyContent="space-between" spacing={2} sx={{ mb: 3 }}>
-        <Box>
-          <Typography variant="h4" sx={{ fontWeight: 700 }}>Mosque Prayer Times</Typography>
+      <Stack direction={{ xs: "column", md: "row" }} alignItems={{ xs: "stretch", md: "flex-end" }} justifyContent="space-between" spacing={2} sx={{ mb: 3 }}>
+        <Box sx={{ minWidth: 0 }}>
+          <Typography variant="h4" sx={{ fontWeight: 700, fontSize: { xs: "2rem", sm: "2.125rem" } }}>Mosque Prayer Times</Typography>
           <Typography color="text.secondary">Add, import and review the five daily prayer times.</Typography>
         </Box>
-        <FormControl size="small" sx={{ minWidth: { xs: "100%", sm: 280 } }}>
+        <FormControl size="small" sx={{ width: { xs: "100%", sm: 280 } }}>
           <InputLabel>Mosque</InputLabel>
           <Select
             label="Mosque"
@@ -433,15 +433,15 @@ export default function PrayerTimesPage() {
 
       {view === "bulk" && (
         <Paper sx={{ p: { xs: 2, md: 3 } }}>
-          <Stack direction={{ xs: "column", lg: "row" }} justifyContent="space-between" spacing={2} sx={{ mb: 3 }}>
-            <Box>
+          <Stack direction={{ xs: "column", lg: "row" }} alignItems={{ xs: "stretch", lg: "flex-end" }} justifyContent="space-between" spacing={2} sx={{ mb: 3 }}>
+            <Box sx={{ minWidth: 0 }}>
               <Typography variant="h6" sx={{ fontWeight: 700 }}>Bulk Add Prayer Times</Typography>
               <Typography color="text.secondary" variant="body2">Create or update one section for every date in the range.</Typography>
             </Box>
             <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5}>
-              <TextField size="small" label="From" type="date" value={from} onChange={(event) => setFrom(event.target.value)} InputLabelProps={{ shrink: true }} />
-              <TextField size="small" label="To" type="date" value={to} onChange={(event) => setTo(event.target.value)} InputLabelProps={{ shrink: true }} />
-              <Button variant="contained" disabled={!mosqueId || bulkDates.length === 0} onClick={() => void saveBulkRange()}>Save range</Button>
+              <TextField size="small" label="From" type="date" value={from} onChange={(event) => setFrom(event.target.value)} InputLabelProps={{ shrink: true }} sx={{ width: { xs: "100%", sm: 160 } }} />
+              <TextField size="small" label="To" type="date" value={to} onChange={(event) => setTo(event.target.value)} InputLabelProps={{ shrink: true }} sx={{ width: { xs: "100%", sm: 160 } }} />
+              <Button variant="contained" disabled={!mosqueId || bulkDates.length === 0} onClick={() => void saveBulkRange()} sx={{ width: { xs: "100%", sm: "auto" } }}>Save range</Button>
             </Stack>
           </Stack>
           {from > to && <Alert severity="error" sx={{ mb: 2 }}>From date must be before or equal to To date.</Alert>}
@@ -508,18 +508,18 @@ export default function PrayerTimesPage() {
               </Box>
             </Grid>
             <Grid item xs={12} md={7}>
-              <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1.5 }}>
-                <Box>
+              <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" alignItems={{ xs: "stretch", sm: "center" }} spacing={1.5} sx={{ mb: 1.5 }}>
+                <Box sx={{ minWidth: 0 }}>
                   <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>Import preview</Typography>
                   <Typography variant="caption" color="text.secondary">
                     {uploadItems.length ? `${uploadItems.length} valid days found` : "Choose a file to preview its prayer times"}
                   </Typography>
                 </Box>
-                <Button variant="contained" disabled={!uploadItems.length} onClick={() => void submitItems(uploadItems)}>Import {uploadItems.length || ""}</Button>
+                <Button variant="contained" disabled={!uploadItems.length} onClick={() => void submitItems(uploadItems)} sx={{ width: { xs: "100%", sm: "auto" } }}>Import {uploadItems.length || ""}</Button>
               </Stack>
               <Box sx={{ border: 1, borderColor: "divider", borderRadius: 1.5, minHeight: 250, overflowX: "auto" }}>
                 {uploadItems.length ? (
-                  <Table size="small">
+                  <Table size="small" sx={{ minWidth: 620 }}>
                     <TableHead>
                       <TableRow>
                         {["Date", "Fajr", "Dhuhr", "Asr", "Maghrib", "Isha"].map((heading) => <TableCell key={heading}>{heading}</TableCell>)}
@@ -555,7 +555,7 @@ export default function PrayerTimesPage() {
                 <Button size="small" aria-label="Previous month" onClick={() => changeCalendarMonth(-1)}>
                   <ChevronLeftOutlinedIcon />
                 </Button>
-                <Typography variant="h6" sx={{ fontWeight: 700 }}>
+                <Typography variant="h6" align="center" sx={{ fontWeight: 700, fontSize: { xs: "1rem", sm: "1.25rem" } }}>
                   {new Intl.DateTimeFormat("en", { month: "long", year: "numeric", timeZone: "UTC" }).format(new Date(`${calendarMonth}T00:00:00.000Z`))}
                 </Typography>
                 <Button size="small" aria-label="Next month" onClick={() => changeCalendarMonth(1)}>
@@ -621,7 +621,7 @@ export default function PrayerTimesPage() {
                     helperText={calendarErrors[key]}
                   />
                 ))}
-                <Button variant="contained" disabled={!mosqueId} onClick={() => void saveCalendarDate()}>
+                <Button variant="contained" disabled={!mosqueId} onClick={() => void saveCalendarDate()} sx={{ width: "100%" }}>
                   Save prayer times
                 </Button>
               </Stack>
