@@ -81,6 +81,7 @@ export const resources: Record<string, ResourceConfig> = {
       { name: "address", label: "Address", type: "placeAutocomplete", required: true },
       { name: "phone", label: "Phone", type: "text" },
       { name: "hours", label: "Hours HH:mm-HH:mm", type: "text" },
+      { name: "descriptionHtml", label: "Description", type: "richtext" },
       { name: "sortOrder", label: "Sort order", type: "number" },
       { name: "isActive", label: "Active", type: "boolean" }
     ]

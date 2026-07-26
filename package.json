@@ -7,6 +7,7 @@
     "typecheck": "npm run typecheck --workspace server && npm run typecheck --workspace client",
     "seed:admin": "npm run seed:admin --workspace server",
     "seed:locations": "npm run seed:locations --workspace server",
+    "seed:demo": "npm run seed:demo --workspace server",
     "seed:quiz": "npm run seed:quiz --workspace server"
   },
   "workspaces": [

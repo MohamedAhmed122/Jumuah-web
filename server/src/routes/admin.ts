@@ -40,6 +40,7 @@ const mosqueSchema = z.object({
   phone: z.string().optional().or(z.literal("")),
   hours: z.string().optional().or(z.literal("")),
   image: z.string().optional().or(z.literal("")),
+  descriptionHtml: z.string().optional().or(z.literal("")),
   lat: z.coerce.number(),
   lng: z.coerce.number(),
   jumuahTimes: z.object({ first: z.string().optional().or(z.literal("")), second: z.string().optional().or(z.literal("")) }).optional(),

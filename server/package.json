@@ -9,6 +9,7 @@
     "typecheck": "tsc --noEmit",
     "seed:admin": "tsx src/seeds/admin.ts",
     "seed:locations": "tsx src/seeds/locations.ts",
+    "seed:demo": "tsx src/seeds/demoContent.ts",
     "seed:quiz": "tsx src/seeds/quiz.ts"
   },
   "dependencies": {

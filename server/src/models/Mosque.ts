@@ -6,6 +6,7 @@ export interface MosqueDocument {
   phone?: string;
   hours?: string;
   image?: string;
+  descriptionHtml?: string;
   lat: number;
   lng: number;
   jumuahTimes?: {
@@ -66,6 +67,7 @@ const mosqueSchema = new Schema<MosqueDocument>(
     phone: String,
     hours: String,
     image: String,
+    descriptionHtml: String,
     lat: { type: Number, required: true },
     lng: { type: Number, required: true },
     jumuahTimes: {

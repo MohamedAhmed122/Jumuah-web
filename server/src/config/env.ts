@@ -1,6 +1,8 @@
 import dotenv from "dotenv";
+import path from "node:path";
 
 dotenv.config();
+if (!process.env.MONGO_URI) dotenv.config({ path: path.resolve("..", ".env") });
 
 export const env = {
   mongoUri: process.env.MONGO_URI ?? "mongodb://127.0.0.1:27017/jumuah",
