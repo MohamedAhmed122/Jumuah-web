@@ -14,11 +14,18 @@ export interface MosqueDocument {
     second?: string;
   };
   iqamaOffsets?: {
-    fajr: number;
-    dhuhr: number;
-    asr: number;
-    maghrib: number;
-    isha: number;
+    fajr?: number;
+    dhuhr?: number;
+    asr?: number;
+    maghrib?: number;
+    isha?: number;
+  };
+  iqamaTimes?: {
+    fajr?: string;
+    dhuhr?: string;
+    asr?: string;
+    maghrib?: string;
+    isha?: string;
   };
   jummahSchedule?: {
     allFridays: boolean;
@@ -34,11 +41,22 @@ export interface MosqueDocument {
 
 const iqamaOffsetsSchema = new Schema(
   {
-    fajr: { type: Number, required: true, min: 0, max: 180 },
-    dhuhr: { type: Number, required: true, min: 0, max: 180 },
-    asr: { type: Number, required: true, min: 0, max: 180 },
-    maghrib: { type: Number, required: true, min: 0, max: 180 },
-    isha: { type: Number, required: true, min: 0, max: 180 }
+    fajr: { type: Number, min: 0, max: 180 },
+    dhuhr: { type: Number, min: 0, max: 180 },
+    asr: { type: Number, min: 0, max: 180 },
+    maghrib: { type: Number, min: 0, max: 180 },
+    isha: { type: Number, min: 0, max: 180 }
+  },
+  { _id: false }
+);
+
+const iqamaTimesSchema = new Schema(
+  {
+    fajr: { type: String, match: /^([01]\d|2[0-3]):[0-5]\d$/ },
+    dhuhr: { type: String, match: /^([01]\d|2[0-3]):[0-5]\d$/ },
+    asr: { type: String, match: /^([01]\d|2[0-3]):[0-5]\d$/ },
+    maghrib: { type: String, match: /^([01]\d|2[0-3]):[0-5]\d$/ },
+    isha: { type: String, match: /^([01]\d|2[0-3]):[0-5]\d$/ }
   },
   { _id: false }
 );
@@ -75,6 +93,7 @@ const mosqueSchema = new Schema<MosqueDocument>(
       second: String
     },
     iqamaOffsets: { type: iqamaOffsetsSchema, default: undefined },
+    iqamaTimes: { type: iqamaTimesSchema, default: undefined },
     jummahSchedule: { type: jummahScheduleSchema, default: undefined },
     isActive: { type: Boolean, default: true, index: true },
     sortOrder: { type: Number, default: 0 }

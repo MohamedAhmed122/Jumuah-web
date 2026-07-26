@@ -22,8 +22,15 @@ import { api, Paged } from "../api/client";
 
 type Mosque = { id: string; name: string };
 type PrayerKey = "fajr" | "dhuhr" | "asr" | "maghrib" | "isha";
-type OffsetValues = Record<PrayerKey, string>;
-type SavedOffsets = Record<PrayerKey, number>;
+type IqamaValues = Record<PrayerKey, { offset: string; time: string }>;
+type FieldErrors = Partial<Record<PrayerKey, { offset?: string; time?: string; row?: string }>>;
+type SavedOffsets = Partial<Record<PrayerKey, number>>;
+type SavedTimes = Partial<Record<PrayerKey, string>>;
+type IqamaResponse = {
+  mosqueId: string;
+  iqamaOffsets: SavedOffsets | null;
+  iqamaTimes: SavedTimes | null;
+};
 
 const prayerLabels: Record<PrayerKey, string> = {
   fajr: "Fajr",
@@ -33,20 +40,32 @@ const prayerLabels: Record<PrayerKey, string> = {
   isha: "Isha"
 };
 const prayerKeys = Object.keys(prayerLabels) as PrayerKey[];
-const emptyOffsets: OffsetValues = { fajr: "", dhuhr: "", asr: "", maghrib: "", isha: "" };
+const timePattern = /^([01]\d|2[0-3]):[0-5]\d$/;
+const emptyValues: IqamaValues = {
+  fajr: { offset: "", time: "" },
+  dhuhr: { offset: "", time: "" },
+  asr: { offset: "", time: "" },
+  maghrib: { offset: "", time: "" },
+  isha: { offset: "", time: "" }
+};
 
-function toInputValues(offsets: SavedOffsets | null): OffsetValues {
-  if (!offsets) return { ...emptyOffsets };
-  return Object.fromEntries(prayerKeys.map((key) => [key, String(offsets[key])])) as OffsetValues;
+function toInputValues(offsets: SavedOffsets | null, times: SavedTimes | null): IqamaValues {
+  return Object.fromEntries(prayerKeys.map((key) => [
+    key,
+    {
+      offset: times?.[key] ? "" : offsets?.[key] == null ? "" : String(offsets[key]),
+      time: times?.[key] ?? ""
+    }
+  ])) as IqamaValues;
 }
 
 export default function IqamaTimesPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [mosques, setMosques] = useState<Mosque[]>([]);
   const [mosqueId, setMosqueId] = useState(searchParams.get("mosqueId") ?? "");
-  const [offsets, setOffsets] = useState<OffsetValues>({ ...emptyOffsets });
-  const [errors, setErrors] = useState<Partial<Record<PrayerKey, string>>>({});
-  const [hasSavedOffsets, setHasSavedOffsets] = useState(false);
+  const [iqamaValues, setIqamaValues] = useState<IqamaValues>(structuredClone(emptyValues));
+  const [errors, setErrors] = useState<FieldErrors>({});
+  const [hasSavedSettings, setHasSavedSettings] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
@@ -73,21 +92,29 @@ export default function IqamaTimesPage() {
     setMessage("");
     setError("");
     setErrors({});
-    void api.get<{ mosqueId: string; iqamaOffsets: SavedOffsets | null }>(`/api/admin/mosques/${mosqueId}/iqama-offsets`)
+    void api.get<IqamaResponse>(`/api/admin/mosques/${mosqueId}/iqama-offsets`)
       .then(({ data }) => {
-        setOffsets(toInputValues(data.iqamaOffsets));
-        setHasSavedOffsets(Boolean(data.iqamaOffsets));
+        setIqamaValues(toInputValues(data.iqamaOffsets, data.iqamaTimes));
+        setHasSavedSettings(Boolean(data.iqamaOffsets || data.iqamaTimes));
       })
       .catch((requestError: any) => setError(requestError.response?.data?.message ?? "IQama offsets could not be loaded."))
       .finally(() => setLoading(false));
   }, [mosqueId]);
 
   function validate() {
-    const nextErrors: Partial<Record<PrayerKey, string>> = {};
+    const nextErrors: FieldErrors = {};
     for (const key of prayerKeys) {
-      const value = Number(offsets[key]);
-      if (offsets[key] === "") nextErrors[key] = "Required";
-      else if (!Number.isInteger(value) || value < 0 || value > 180) nextErrors[key] = "Enter 0–180 whole minutes";
+      const offsetText = iqamaValues[key].offset.trim();
+      const timeText = iqamaValues[key].time.trim();
+      const prayerErrors: { offset?: string; time?: string; row?: string } = {};
+      if (!offsetText && !timeText) prayerErrors.row = "Enter minutes after Athan or an exact IQama time";
+      if (offsetText && timeText) prayerErrors.row = "Use minutes or exact time, not both";
+      if (offsetText) {
+        const value = Number(offsetText);
+        if (!Number.isInteger(value) || value < 0 || value > 180) prayerErrors.offset = "Enter 0–180 whole minutes";
+      }
+      if (timeText && !timePattern.test(timeText)) prayerErrors.time = "Use HH:mm";
+      if (Object.keys(prayerErrors).length) nextErrors[key] = prayerErrors;
     }
     setErrors(nextErrors);
     return Object.keys(nextErrors).length === 0;
@@ -99,13 +126,24 @@ export default function IqamaTimesPage() {
     setMessage("");
     setError("");
     try {
-      const payload = Object.fromEntries(prayerKeys.map((key) => [key, Number(offsets[key])])) as SavedOffsets;
-      const { data } = await api.put<{ iqamaOffsets: SavedOffsets }>(`/api/admin/mosques/${mosqueId}/iqama-offsets`, payload);
-      setOffsets(toInputValues(data.iqamaOffsets));
-      setHasSavedOffsets(true);
-      setMessage("IQama offsets saved. They now apply to every day.");
+      const payload = {
+        iqamaOffsets: Object.fromEntries(
+          prayerKeys
+            .filter((key) => iqamaValues[key].offset.trim())
+            .map((key) => [key, Number(iqamaValues[key].offset)])
+        ),
+        iqamaTimes: Object.fromEntries(
+          prayerKeys
+            .filter((key) => iqamaValues[key].time.trim())
+            .map((key) => [key, iqamaValues[key].time.trim()])
+        )
+      };
+      const { data } = await api.put<IqamaResponse>(`/api/admin/mosques/${mosqueId}/iqama-offsets`, payload);
+      setIqamaValues(toInputValues(data.iqamaOffsets, data.iqamaTimes));
+      setHasSavedSettings(true);
+      setMessage("IQama settings saved. They now apply to every day.");
     } catch (requestError: any) {
-      setError(requestError.response?.data?.message ?? "IQama offsets could not be saved.");
+      setError(requestError.response?.data?.message ?? "IQama settings could not be saved.");
     } finally {
       setSaving(false);
     }
@@ -119,7 +157,7 @@ export default function IqamaTimesPage() {
       <Stack direction={{ xs: "column", md: "row" }} alignItems={{ md: "flex-end" }} justifyContent="space-between" spacing={2} sx={{ mb: 3 }}>
         <Box>
           <Typography variant="h4" sx={{ fontWeight: 700 }}>IQama Times</Typography>
-          <Typography color="text.secondary">Set a fixed number of minutes after Athan for each prayer.</Typography>
+          <Typography color="text.secondary">Set minutes after Athan or an exact IQama time for each prayer.</Typography>
         </Box>
         <FormControl size="small" sx={{ minWidth: { xs: "100%", sm: 280 } }}>
           <InputLabel>Mosque</InputLabel>
@@ -144,15 +182,15 @@ export default function IqamaTimesPage() {
         <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" spacing={2} sx={{ mb: 3 }}>
           <Box>
             <Typography variant="h6" sx={{ fontWeight: 700 }}>
-              {hasSavedOffsets ? "Edit IQama offsets" : "Add IQama offsets"}
+              {hasSavedSettings ? "Edit IQama settings" : "Add IQama settings"}
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              The calculated IQama time is the day’s Athan time plus the minutes below.
+              Fill one field for every prayer: minutes after Athan or exact IQama time.
             </Typography>
           </Box>
           <Box sx={{ alignItems: "center", bgcolor: "action.hover", borderRadius: 1.5, display: "flex", gap: 1, px: 2, py: 1 }}>
             <ScheduleOutlinedIcon color="primary" />
-            <Typography variant="body2" sx={{ fontWeight: 600 }}>Same offsets every day</Typography>
+            <Typography variant="body2" sx={{ fontWeight: 600 }}>Same settings every day</Typography>
           </Box>
         </Stack>
 
@@ -162,33 +200,52 @@ export default function IqamaTimesPage() {
           <>
             <Grid container spacing={2}>
               {prayerKeys.map((key) => (
-                <Grid item xs={12} sm={6} md={2.4} key={key}>
+                <Grid item xs={12} sm={6} md={4} lg={2.4} key={key}>
                   <Box sx={{ border: 1, borderColor: "divider", borderRadius: 1.5, p: 2 }}>
                     <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1 }}>{prayerLabels[key]}</Typography>
-                    <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 0.75 }}>
-                      Minutes after Athan
-                    </Typography>
-                    <TextField
-                      fullWidth
-                      type="number"
-                      placeholder="15"
-                      value={offsets[key]}
-                      onChange={(event) => {
-                        setOffsets((current) => ({ ...current, [key]: event.target.value }));
-                        setErrors((current) => ({ ...current, [key]: undefined }));
-                      }}
-                      inputProps={{ min: 0, max: 180, step: 1, "aria-label": `${prayerLabels[key]} minutes after Athan` }}
-                      InputProps={{ endAdornment: <InputAdornment position="end">min</InputAdornment> }}
-                      error={Boolean(errors[key])}
-                      helperText={errors[key] ?? "IQama = Athan + offset"}
-                    />
+                    <Stack spacing={1.5}>
+                      <TextField
+                        fullWidth
+                        type="number"
+                        label="Minutes after Athan"
+                        placeholder="15"
+                        value={iqamaValues[key].offset}
+                        onChange={(event) => {
+                          setIqamaValues((current) => ({
+                            ...current,
+                            [key]: { offset: event.target.value, time: event.target.value.trim() ? "" : current[key].time }
+                          }));
+                          setErrors((current) => ({ ...current, [key]: undefined }));
+                        }}
+                        inputProps={{ min: 0, max: 180, step: 1, "aria-label": `${prayerLabels[key]} minutes after Athan` }}
+                        InputProps={{ endAdornment: <InputAdornment position="end">min</InputAdornment> }}
+                        error={Boolean(errors[key]?.offset || errors[key]?.row)}
+                        helperText={errors[key]?.offset ?? errors[key]?.row ?? "IQama = Athan + offset"}
+                      />
+                      <TextField
+                        fullWidth
+                        label="Exact IQama time"
+                        placeholder="18:18"
+                        value={iqamaValues[key].time}
+                        onChange={(event) => {
+                          setIqamaValues((current) => ({
+                            ...current,
+                            [key]: { offset: event.target.value.trim() ? "" : current[key].offset, time: event.target.value }
+                          }));
+                          setErrors((current) => ({ ...current, [key]: undefined }));
+                        }}
+                        inputProps={{ inputMode: "numeric", pattern: "[0-9]{2}:[0-9]{2}", "aria-label": `${prayerLabels[key]} exact IQama time` }}
+                        error={Boolean(errors[key]?.time)}
+                        helperText={errors[key]?.time ?? "Use HH:mm, for example 18:18"}
+                      />
+                    </Stack>
                   </Box>
                 </Grid>
               ))}
             </Grid>
             <Stack direction="row" justifyContent="flex-end" sx={{ mt: 3 }}>
               <Button variant="contained" disabled={!mosqueId || saving} onClick={() => void save()}>
-                {saving ? "Saving…" : hasSavedOffsets ? "Save changes" : "Add IQama offsets"}
+                {saving ? "Saving…" : hasSavedSettings ? "Save changes" : "Add IQama settings"}
               </Button>
             </Stack>
           </>

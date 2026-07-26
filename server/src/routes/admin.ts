@@ -54,13 +54,73 @@ const prayerTimeSchema = z.object({
   times: prayerTimesSchema
 });
 
-const iqamaOffsetsSchema = z.object({
+const prayerKeys = ["fajr", "dhuhr", "asr", "maghrib", "isha"] as const;
+const optionalIqamaOffsetSchema = z.preprocess(
+  (value) => value === "" || value == null ? undefined : value,
+  z.coerce.number().int().min(0).max(180).optional()
+);
+const optionalIqamaTimeSchema = z.string().trim().optional().or(z.literal("")).refine(
+  (value) => !value || /^([01]\d|2[0-3]):[0-5]\d$/.test(value),
+  "Expected HH:mm"
+);
+const legacyIqamaOffsetsSchema = z.object({
   fajr: z.coerce.number().int().min(0).max(180),
   dhuhr: z.coerce.number().int().min(0).max(180),
   asr: z.coerce.number().int().min(0).max(180),
   maghrib: z.coerce.number().int().min(0).max(180),
   isha: z.coerce.number().int().min(0).max(180)
 });
+const iqamaOffsetsSchema = z.object({
+  fajr: optionalIqamaOffsetSchema,
+  dhuhr: optionalIqamaOffsetSchema,
+  asr: optionalIqamaOffsetSchema,
+  maghrib: optionalIqamaOffsetSchema,
+  isha: optionalIqamaOffsetSchema
+}).default({});
+const iqamaTimesSchema = z.object({
+  fajr: optionalIqamaTimeSchema,
+  dhuhr: optionalIqamaTimeSchema,
+  asr: optionalIqamaTimeSchema,
+  maghrib: optionalIqamaTimeSchema,
+  isha: optionalIqamaTimeSchema
+}).default({});
+const iqamaSettingsSchema = z.union([
+  legacyIqamaOffsetsSchema.transform((iqamaOffsets) => ({ iqamaOffsets, iqamaTimes: {} })),
+  z.object({
+    iqamaOffsets: iqamaOffsetsSchema,
+    iqamaTimes: iqamaTimesSchema
+  }).superRefine((settings, context) => {
+    for (const key of prayerKeys) {
+      const hasOffset = settings.iqamaOffsets[key] != null;
+      const hasTime = Boolean(settings.iqamaTimes[key]);
+      if (!hasOffset && !hasTime) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Enter minutes after Athan or an exact IQama time",
+          path: ["iqamaOffsets", key]
+        });
+      }
+      if (hasOffset && hasTime) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Use either minutes after Athan or an exact IQama time, not both",
+          path: ["iqamaTimes", key]
+        });
+      }
+    }
+  }).transform((settings) => ({
+    iqamaOffsets: Object.fromEntries(
+      prayerKeys
+        .filter((key) => settings.iqamaOffsets[key] != null)
+        .map((key) => [key, settings.iqamaOffsets[key]])
+    ),
+    iqamaTimes: Object.fromEntries(
+      prayerKeys
+        .filter((key) => settings.iqamaTimes[key])
+        .map((key) => [key, settings.iqamaTimes[key]])
+    )
+  }))
+]);
 
 const jummahScheduleSchema = z.object({
   allFridays: z.boolean(),
@@ -454,21 +514,21 @@ adminRouter.post("/notifications/:id/resend", asyncHandler(async (req, res) => {
 
 adminRouter.get("/mosques/:id/iqama-offsets", asyncHandler(async (req, res) => {
   const { id } = z.object({ id: objectIdSchema }).parse(req.params);
-  const mosque = await Mosque.findById(id).select("iqamaOffsets");
+  const mosque = await Mosque.findById(id).select("iqamaOffsets iqamaTimes");
   if (!mosque) throw new HttpError(404, "Mosque not found");
-  res.json({ mosqueId: id, iqamaOffsets: mosque.iqamaOffsets ?? null });
+  res.json({ mosqueId: id, iqamaOffsets: mosque.iqamaOffsets ?? null, iqamaTimes: mosque.iqamaTimes ?? null });
 }));
 
 adminRouter.put("/mosques/:id/iqama-offsets", asyncHandler(async (req, res) => {
   const { id } = z.object({ id: objectIdSchema }).parse(req.params);
-  const iqamaOffsets = iqamaOffsetsSchema.parse(req.body);
+  const { iqamaOffsets, iqamaTimes } = iqamaSettingsSchema.parse(req.body);
   const mosque = await Mosque.findByIdAndUpdate(
     id,
-    { $set: { iqamaOffsets } },
+    { $set: { iqamaOffsets, iqamaTimes } },
     { new: true, runValidators: true }
-  ).select("iqamaOffsets");
+  ).select("iqamaOffsets iqamaTimes");
   if (!mosque) throw new HttpError(404, "Mosque not found");
-  res.json({ mosqueId: id, iqamaOffsets: mosque.iqamaOffsets });
+  res.json({ mosqueId: id, iqamaOffsets: mosque.iqamaOffsets ?? null, iqamaTimes: mosque.iqamaTimes ?? null });
 }));
 
 adminRouter.get("/mosques/:id/jummah-times", asyncHandler(async (req, res) => {
