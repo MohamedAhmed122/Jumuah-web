@@ -2,6 +2,8 @@ import { Router } from "express";
 import mongoose from "mongoose";
 import { z } from "zod";
 import { Announcement } from "../models/Announcement.js";
+import { Event } from "../models/Event.js";
+import { EventAttendance } from "../models/EventAttendance.js";
 import { HalalPlace } from "../models/HalalPlace.js";
 import { Mosque } from "../models/Mosque.js";
 import { MosquePrayerTime } from "../models/MosquePrayerTime.js";
@@ -68,6 +70,24 @@ function serializeNotification(doc: unknown, lang: Lang) {
     title: localizedText(item.title as LocalizedStringLike, lang),
     description: localizedText(item.description as LocalizedStringLike, lang),
     dismissible: item.isDismissLocked !== true,
+    lang
+  };
+}
+
+async function serializeEvent(doc: unknown, lang: Lang, deviceId?: string) {
+  const item = toJson(doc) as Record<string, unknown>;
+  const eventId = String(item.id);
+  const [attendeeCount, attendance] = await Promise.all([
+    EventAttendance.countDocuments({ eventId, isActive: true }),
+    deviceId ? EventAttendance.findOne({ eventId, deviceId, isActive: true }).select("_id") : null
+  ]);
+  return {
+    ...item,
+    title: localizedText(item.title as LocalizedStringLike, lang),
+    descriptionHtml: localizedText(item.descriptionHtml as LocalizedStringLike, lang),
+    attendeeCount,
+    joined: Boolean(attendance),
+    isFull: typeof item.capacity === "number" && attendeeCount >= item.capacity,
     lang
   };
 }
@@ -154,6 +174,82 @@ publicRouter.get("/community/announcements/:id", asyncHandler(async (req, res) =
   });
   if (!announcement) throw new HttpError(404, "Announcement not found");
   res.json(serializeAnnouncement(announcement, lang));
+}));
+
+publicRouter.get("/community/events", asyncHandler(async (req, res) => {
+  const query = z.object({
+    mosqueId: objectIdSchema,
+    lang: langSchema.optional(),
+    deviceId: z.string().min(1).optional()
+  }).parse(req.query);
+  const now = new Date();
+  const events = await Event.find({
+    status: "published",
+    mosqueIds: query.mosqueId,
+    $or: [
+      { endDate: { $gt: now } },
+      { endDate: { $exists: false }, eventDate: { $gte: now } }
+    ]
+  }).sort({ isPinned: -1, eventDate: 1, createdAt: -1 });
+  res.json(await Promise.all(events.map((event) => serializeEvent(event, normalizeLang(query.lang), query.deviceId))));
+}));
+
+publicRouter.get("/community/events/:id", asyncHandler(async (req, res) => {
+  const { id } = z.object({ id: objectIdSchema }).parse(req.params);
+  const query = z.object({
+    mosqueId: objectIdSchema,
+    lang: langSchema.optional(),
+    deviceId: z.string().min(1).optional()
+  }).parse(req.query);
+  const event = await Event.findOne({
+    _id: id,
+    status: "published",
+    mosqueIds: query.mosqueId
+  });
+  if (!event) throw new HttpError(404, "Event not found");
+  res.json(await serializeEvent(event, normalizeLang(query.lang), query.deviceId));
+}));
+
+publicRouter.post("/community/events/:id/join", asyncHandler(async (req, res) => {
+  const { id } = z.object({ id: objectIdSchema }).parse(req.params);
+  const body = z.object({
+    deviceId: z.string().min(1),
+    lang: langSchema.default("en"),
+    mosqueId: objectIdSchema.optional()
+  }).parse(req.body);
+  const now = new Date();
+  const event = await Event.findOne({
+    _id: id,
+    status: "published",
+    ...(body.mosqueId ? { mosqueIds: body.mosqueId } : {})
+  });
+  if (!event) throw new HttpError(404, "Event not found");
+  if (!event.registrationEnabled) throw new HttpError(400, "Event registration is closed");
+  if ((event.endDate ?? event.eventDate) <= now) throw new HttpError(400, "Event has ended");
+
+  const attendeeCount = await EventAttendance.countDocuments({ eventId: event._id, isActive: true });
+  const existing = await EventAttendance.findOne({ eventId: event._id, deviceId: body.deviceId });
+  if (!existing?.isActive && event.capacity && attendeeCount >= event.capacity) throw new HttpError(400, "Event is full");
+
+  const attendance = await EventAttendance.findOneAndUpdate(
+    { eventId: event._id, deviceId: body.deviceId },
+    { $set: { lang: body.lang, isActive: true, joinedAt: now }, $unset: { cancelledAt: "" } },
+    { upsert: true, new: true, setDefaultsOnInsert: true }
+  );
+  const nextCount = existing?.isActive ? attendeeCount : attendeeCount + 1;
+  res.json({ ok: true, joined: true, attendeeCount: nextCount, attendance: toJson(attendance) });
+}));
+
+publicRouter.post("/community/events/:id/leave", asyncHandler(async (req, res) => {
+  const { id } = z.object({ id: objectIdSchema }).parse(req.params);
+  const body = z.object({ deviceId: z.string().min(1) }).parse(req.body);
+  await EventAttendance.findOneAndUpdate(
+    { eventId: id, deviceId: body.deviceId },
+    { isActive: false, cancelledAt: new Date() },
+    { new: true }
+  );
+  const attendeeCount = await EventAttendance.countDocuments({ eventId: id, isActive: true });
+  res.json({ ok: true, joined: false, attendeeCount });
 }));
 
 publicRouter.get("/community/notifications", asyncHandler(async (req, res) => {

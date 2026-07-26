@@ -6,6 +6,7 @@ const labels: Record<string, string> = {
   mosques: "Total mosques",
   halalPlaces: "Total halal places",
   announcements: "Published announcements",
+  events: "Published events",
   quizQuestions: "Active quiz questions",
   pushDevices: "Registered push devices",
   adminUsers: "Active admin users"

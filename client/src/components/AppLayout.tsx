@@ -7,6 +7,7 @@ const navItems = [
   ["Mosques", "/mosques"],
   ["Prayer Times", "/prayer-times"],
   ["Halal Places", "/halal-places"],
+  ["Events", "/events"],
   ["Quiz Questions", "/quiz-questions"],
   ["Push Registrations", "/push-registrations"]
 ];

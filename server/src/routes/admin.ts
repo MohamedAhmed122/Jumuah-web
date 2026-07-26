@@ -3,6 +3,8 @@ import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { AdminUser } from "../models/AdminUser.js";
 import { Announcement } from "../models/Announcement.js";
+import { Event } from "../models/Event.js";
+import { EventAttendance } from "../models/EventAttendance.js";
 import { HalalPlace } from "../models/HalalPlace.js";
 import { Mosque } from "../models/Mosque.js";
 import { MosquePrayerTime } from "../models/MosquePrayerTime.js";
@@ -277,6 +279,46 @@ function announcementData(body: z.infer<typeof announcementSchema>) {
   };
 }
 
+const eventSchema = z.object({
+  title: trilingualStringSchema,
+  image: z.string().min(1),
+  descriptionHtml: trilingualStringSchema,
+  mosqueIds: z.array(objectIdSchema).min(1),
+  eventDate: z.coerce.date(),
+  endDate: z.coerce.date().optional().nullable(),
+  locationType: z.enum(["mosque", "outside"]),
+  locationMosqueId: objectIdSchema.optional().or(z.literal("")),
+  outsideLocation: z.object({
+    address: z.string().min(1),
+    lat: z.coerce.number(),
+    lng: z.coerce.number()
+  }).optional().nullable(),
+  status: z.enum(["draft", "published", "cancelled"]).default("draft"),
+  registrationEnabled: z.boolean().default(true),
+  capacity: z.preprocess((value) => value === "" || value == null ? undefined : value, z.coerce.number().int().min(1).optional()),
+  isPinned: z.boolean().default(false)
+}).superRefine((event, context) => {
+  if (event.locationType === "mosque" && !event.locationMosqueId) {
+    context.addIssue({ code: z.ZodIssueCode.custom, message: "Select the event mosque", path: ["locationMosqueId"] });
+  }
+  if (event.locationType === "outside" && !event.outsideLocation) {
+    context.addIssue({ code: z.ZodIssueCode.custom, message: "Select an outside location", path: ["outsideLocation"] });
+  }
+  if (event.endDate && event.endDate < event.eventDate) {
+    context.addIssue({ code: z.ZodIssueCode.custom, message: "End date must be after the event date", path: ["endDate"] });
+  }
+});
+
+function eventData(body: z.infer<typeof eventSchema>) {
+  return {
+    ...body,
+    endDate: body.endDate || undefined,
+    locationMosqueId: body.locationType === "mosque" ? body.locationMosqueId : undefined,
+    outsideLocation: body.locationType === "outside" ? body.outsideLocation : undefined,
+    capacity: body.capacity || undefined
+  };
+}
+
 const quizSchema = z.object({
   question: localizedStringSchema,
   options: localizedOptionsSchema,
@@ -318,15 +360,16 @@ adminRouter.post("/auth/login", asyncHandler(async (req, res) => {
 adminRouter.use(requireAdmin);
 
 adminRouter.get("/dashboard", asyncHandler(async (_req, res) => {
-  const [mosques, halalPlaces, announcements, quizQuestions, pushDevices, adminUsers] = await Promise.all([
+  const [mosques, halalPlaces, announcements, events, quizQuestions, pushDevices, adminUsers] = await Promise.all([
     Mosque.countDocuments({ isActive: true }),
     HalalPlace.countDocuments({ isActive: true }),
     Announcement.countDocuments({ status: "published" }),
+    Event.countDocuments({ status: "published" }),
     QuizQuestion.countDocuments({ isActive: true }),
     PushRegistration.countDocuments({ isActive: true }),
     AdminUser.countDocuments({ isActive: true })
   ]);
-  res.json({ mosques, halalPlaces, announcements, quizQuestions, pushDevices, adminUsers });
+  res.json({ mosques, halalPlaces, announcements, events, quizQuestions, pushDevices, adminUsers });
 }));
 
 adminRouter.post("/uploads", upload.single("file"), (req, res) => {
@@ -483,6 +526,68 @@ adminRouter.delete("/announcements/:id", asyncHandler(async (req, res) => {
   const item = await Announcement.findByIdAndDelete(id);
   if (!item) throw new HttpError(404, "Announcement not found");
   res.json(toJson(item));
+}));
+
+async function eventWithAttendeeCount(event: unknown) {
+  const item = toJson(event) as Record<string, unknown>;
+  const attendeeCount = await EventAttendance.countDocuments({ eventId: item.id, isActive: true });
+  return { ...item, attendeeCount };
+}
+
+adminRouter.get("/events", asyncHandler(async (req, res) => {
+  const query = pageQuery.parse(req.query);
+  const filter: Record<string, unknown> = { ...textSearch(query.search, ["title.en", "title.ru", "title.lt"]) };
+  if (query.status) filter.status = query.status;
+  if (query.mosqueId) filter.mosqueIds = query.mosqueId;
+  const skip = (query.page - 1) * query.pageSize;
+  const [items, total] = await Promise.all([
+    Event.find(filter).sort({ isPinned: -1, eventDate: 1, createdAt: -1 }).skip(skip).limit(query.pageSize),
+    Event.countDocuments(filter)
+  ]);
+  res.json({ items: await Promise.all(items.map(eventWithAttendeeCount)), total, page: query.page, pageSize: query.pageSize });
+}));
+
+adminRouter.post("/events", asyncHandler(async (req, res) => {
+  const item = await Event.create(eventData(eventSchema.parse(req.body)));
+  res.status(201).json(await eventWithAttendeeCount(item));
+}));
+
+adminRouter.get("/events/:id", asyncHandler(async (req, res) => {
+  const { id } = z.object({ id: objectIdSchema }).parse(req.params);
+  const item = await Event.findById(id);
+  if (!item) throw new HttpError(404, "Event not found");
+  res.json(await eventWithAttendeeCount(item));
+}));
+
+adminRouter.put("/events/:id", asyncHandler(async (req, res) => {
+  const { id } = z.object({ id: objectIdSchema }).parse(req.params);
+  const item = await Event.findByIdAndUpdate(
+    id,
+    eventData(eventSchema.parse(req.body)),
+    { new: true, runValidators: true }
+  );
+  if (!item) throw new HttpError(404, "Event not found");
+  res.json(await eventWithAttendeeCount(item));
+}));
+
+adminRouter.delete("/events/:id", asyncHandler(async (req, res) => {
+  const { id } = z.object({ id: objectIdSchema }).parse(req.params);
+  const item = await Event.findByIdAndDelete(id);
+  if (!item) throw new HttpError(404, "Event not found");
+  await EventAttendance.updateMany({ eventId: id }, { isActive: false, cancelledAt: new Date() });
+  res.json(toJson(item));
+}));
+
+adminRouter.get("/events/:id/attendees", asyncHandler(async (req, res) => {
+  const { id } = z.object({ id: objectIdSchema }).parse(req.params);
+  const query = pageQuery.parse(req.query);
+  const skip = (query.page - 1) * query.pageSize;
+  const filter = { eventId: id, isActive: true };
+  const [items, total] = await Promise.all([
+    EventAttendance.find(filter).sort({ joinedAt: -1 }).skip(skip).limit(query.pageSize),
+    EventAttendance.countDocuments(filter)
+  ]);
+  res.json({ items: toJsonList(items), total, page: query.page, pageSize: query.pageSize });
 }));
 
 adminRouter.get("/notifications", asyncHandler(async (req, res) => {

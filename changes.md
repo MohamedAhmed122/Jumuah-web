@@ -237,3 +237,160 @@ GET /api/locations/halal?lang=lt
 ```
 
 Localized fields fall back to English if the requested language value is missing.
+
+# 3. Change Events support
+
+## Summary
+
+The backend now has a separate Events feature. Events are similar to announcements, but they represent things users can attend. The mobile app should show a Join button for events when registration is enabled.
+
+Events are mosque-scoped and localized in English, Russian and Lithuanian.
+
+## Backend data model changes
+
+A new `Event` model was added:
+
+```ts
+type Event = {
+  id: string;
+  title: {
+    en: string;
+    ru: string;
+    lt: string;
+  };
+  image: string;
+  descriptionHtml: {
+    en: string;
+    ru: string;
+    lt: string;
+  };
+  mosqueIds: string[];
+  eventDate: string;
+  endDate?: string;
+  locationType: "mosque" | "outside";
+  locationMosqueId?: string;
+  outsideLocation?: {
+    address: string;
+    lat: number;
+    lng: number;
+  };
+  status: "draft" | "published" | "cancelled";
+  registrationEnabled: boolean;
+  capacity?: number;
+  isPinned: boolean;
+  attendeeCount: number;
+  joined?: boolean;
+  isFull: boolean;
+};
+```
+
+A new `EventAttendance` model was added:
+
+```ts
+type EventAttendance = {
+  eventId: string;
+  deviceId: string;
+  lang: "en" | "ru" | "lt";
+  isActive: boolean;
+  joinedAt: string;
+  cancelledAt?: string;
+};
+```
+
+Each device can only have one attendance record per event. Leaving an event deactivates the attendance instead of deleting it.
+
+## Public mobile API changes
+
+List published events:
+
+```http
+GET /api/community/events?mosqueId=:mosqueId&lang=lt&deviceId=:deviceId
+```
+
+Get one event:
+
+```http
+GET /api/community/events/:id?mosqueId=:mosqueId&lang=lt&deviceId=:deviceId
+```
+
+Join an event:
+
+```http
+POST /api/community/events/:id/join
+```
+
+Body:
+
+```json
+{
+  "deviceId": "device-123",
+  "lang": "lt",
+  "mosqueId": "64f000000000000000000001"
+}
+```
+
+Leave an event:
+
+```http
+POST /api/community/events/:id/leave
+```
+
+Body:
+
+```json
+{
+  "deviceId": "device-123"
+}
+```
+
+The event list/detail response returns localized `title` and `descriptionHtml` as strings:
+
+```json
+{
+  "id": "64f000000000000000000001",
+  "title": "Community dinner",
+  "descriptionHtml": "<p>Join us after Maghrib.</p>",
+  "eventDate": "2026-08-01T17:00:00.000Z",
+  "registrationEnabled": true,
+  "capacity": 100,
+  "attendeeCount": 24,
+  "joined": false,
+  "isFull": false,
+  "lang": "en"
+}
+```
+
+## Mobile app behavior needed
+
+The mobile app should show the Join button when:
+
+- `registrationEnabled` is `true`
+- `status` is `published`
+- `isFull` is `false`
+- the event has not ended
+- the user has not already joined
+
+If `joined` is `true`, show a Joined state. If the app supports cancelling attendance, call the leave endpoint.
+
+When the user taps Join, call:
+
+```http
+POST /api/community/events/:id/join
+```
+
+After a successful join, update local UI using the returned `joined` and `attendeeCount`.
+
+## Admin API changes
+
+Admin event routes:
+
+```http
+GET /api/admin/events
+POST /api/admin/events
+GET /api/admin/events/:id
+PUT /api/admin/events/:id
+DELETE /api/admin/events/:id
+GET /api/admin/events/:id/attendees
+```
+
+The admin panel now has an Events page under mosque settings and the sidebar. Admins can create/edit events and see attendee counts.

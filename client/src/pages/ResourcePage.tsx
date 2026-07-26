@@ -2,6 +2,7 @@ import { ChangeEvent, useEffect, useMemo, useState } from "react";
 import { Alert, Autocomplete, Avatar, Box, Button, Checkbox, Chip, Dialog, DialogActions, DialogContent, DialogTitle, FormControl, InputLabel, List, ListItemButton, ListItemIcon, ListItemText, MenuItem, Paper, Select, Stack, Tab, Table, TableBody, TableCell, TableHead, TableRow, Tabs, TextField, Typography } from "@mui/material";
 import AccessTimeOutlinedIcon from "@mui/icons-material/AccessTimeOutlined";
 import CampaignOutlinedIcon from "@mui/icons-material/CampaignOutlined";
+import EventAvailableOutlinedIcon from "@mui/icons-material/EventAvailableOutlined";
 import MosqueOutlinedIcon from "@mui/icons-material/MosqueOutlined";
 import NotificationsActiveOutlinedIcon from "@mui/icons-material/NotificationsActiveOutlined";
 import SettingsOutlinedIcon from "@mui/icons-material/SettingsOutlined";
@@ -216,6 +217,7 @@ export default function ResourcePage({ resource }: { resource: string }) {
               { label: "IQama Times", icon: <AccessTimeOutlinedIcon />, path: "/iqama-times" },
               { label: "Jummah Times", icon: <TodayOutlinedIcon />, path: "/jummah-times" },
               { label: "Announcements", icon: <CampaignOutlinedIcon />, path: "/announcements" },
+              { label: "Events", icon: <EventAvailableOutlinedIcon />, path: "/events" },
               { label: "Notifications", icon: <NotificationsActiveOutlinedIcon />, path: "/notifications" }
             ].map((option) => (
               <Paper
