@@ -394,3 +394,70 @@ GET /api/admin/events/:id/attendees
 ```
 
 The admin panel now has an Events page under mosque settings and the sidebar. Admins can create/edit events and see attendee counts.
+
+# 4. Change Calendar support
+
+## Summary
+
+The admin panel now has a Calendar page for mosque-scoped scheduling. It shows Events and Announcements together in one weekly calendar view.
+
+Events and announcements use different colors:
+
+- Events use green/teal.
+- Announcements use purple.
+- Events do not use red.
+
+## Admin panel changes
+
+A new Calendar route was added:
+
+```http
+/calendar
+```
+
+The Calendar page is available from:
+
+- The main admin sidebar.
+- The Mosque Settings shortcut menu.
+
+The Calendar page lets an admin:
+
+- Select a mosque.
+- Move between weeks.
+- Return to the current week with Today.
+- See Events and Announcements in the same week grid.
+- Create a new Event from the Calendar.
+- Create a new Announcement from the Calendar.
+
+Creating from Calendar opens the existing Event or Announcement admin form with the selected mosque and date prefilled.
+
+## Data shown in Calendar
+
+Events use:
+
+```ts
+eventDate
+endDate
+title
+status
+attendeeCount
+capacity
+```
+
+Announcements use:
+
+```ts
+eventDate || date
+endDate
+title
+status
+```
+
+The Calendar uses the existing admin APIs:
+
+```http
+GET /api/admin/events?mosqueId=:mosqueId
+GET /api/admin/announcements?mosqueId=:mosqueId
+```
+
+No mobile app change is required for the admin Calendar itself.

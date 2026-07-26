@@ -3,6 +3,7 @@ import ReactDOM from "react-dom/client";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { CssBaseline, ThemeProvider, createTheme } from "@mui/material";
 import AppLayout from "./components/AppLayout";
+import CalendarPage from "./pages/CalendarPage";
 import LoginPage from "./pages/LoginPage";
 import DashboardPage from "./pages/DashboardPage";
 import ResourcePage from "./pages/ResourcePage";
@@ -43,6 +44,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
             }
           >
             <Route index element={<DashboardPage />} />
+            <Route path="calendar" element={<CalendarPage />} />
             <Route path="users" element={<ResourcePage resource="users" />} />
             <Route path="mosques" element={<ResourcePage resource="mosques" />} />
             <Route path="prayer-times" element={<PrayerTimesPage />} />

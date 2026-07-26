@@ -1,4 +1,4 @@
-import { ChangeEvent, useEffect, useMemo, useState } from "react";
+import { ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
   Avatar,
@@ -75,7 +75,7 @@ function localDateTime(value?: string | Date) {
   return local.toISOString().slice(0, 16);
 }
 
-function emptyAnnouncement(mosqueId: string): Announcement {
+function emptyAnnouncement(mosqueId: string, eventDate = ""): Announcement {
   return {
     title: { en: "", ru: "", lt: "" },
     descriptionHtml: { en: "<p></p>", ru: "<p></p>", lt: "<p></p>" },
@@ -83,7 +83,7 @@ function emptyAnnouncement(mosqueId: string): Announcement {
     mosqueIds: mosqueId ? [mosqueId] : [],
     status: "draft",
     date: localDateTime(),
-    eventDate: "",
+    eventDate,
     endDate: "",
     locationType: "mosque",
     locationMosqueId: mosqueId,
@@ -135,6 +135,7 @@ export default function AnnouncementsPage() {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const createHandled = useRef(false);
 
   const mosqueNames = useMemo(() => new Map(mosques.map((mosque) => [mosque.id, mosque.name])), [mosques]);
 
@@ -144,7 +145,11 @@ export default function AnnouncementsPage() {
         setMosques(data.items);
         if (!mosqueId && data.items[0]) {
           setMosqueId(data.items[0].id);
-          setSearchParams({ mosqueId: data.items[0].id }, { replace: true });
+          setSearchParams((current) => {
+            const next = new URLSearchParams(current);
+            next.set("mosqueId", data.items[0].id);
+            return next;
+          }, { replace: true });
         }
       })
       .catch((requestError: any) => setError(requestError.response?.data?.message ?? "Mosques could not be loaded."));
@@ -169,8 +174,14 @@ export default function AnnouncementsPage() {
   function openCreate() {
     setActiveLang("en");
     setError("");
-    setEditing(emptyAnnouncement(mosqueId));
+    setEditing(emptyAnnouncement(mosqueId, searchParams.get("eventDate") ?? ""));
   }
+
+  useEffect(() => {
+    if (createHandled.current || searchParams.get("create") !== "1" || !mosqueId) return;
+    createHandled.current = true;
+    openCreate();
+  }, [mosqueId, searchParams]);
 
   function validate(item: Announcement) {
     if (!item.mosqueIds.length) return "Select at least one audience mosque.";

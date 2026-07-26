@@ -3,6 +3,7 @@ import { AppBar, Box, Button, Drawer, List, ListItemButton, ListItemText, Toolba
 
 const navItems = [
   ["Dashboard", "/"],
+  ["Calendar", "/calendar"],
   ["Admin Users", "/users"],
   ["Mosques", "/mosques"],
   ["Prayer Times", "/prayer-times"],

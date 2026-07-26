@@ -1,4 +1,4 @@
-import { ChangeEvent, useEffect, useMemo, useState } from "react";
+import { ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
   Avatar,
@@ -83,13 +83,13 @@ function localizedText(value: LocalizedText | string | undefined, fallback = "")
   };
 }
 
-function emptyEvent(mosqueId: string): EventItem {
+function emptyEvent(mosqueId: string, eventDate = localDateTime()): EventItem {
   return {
     title: { en: "", ru: "", lt: "" },
     descriptionHtml: { en: "<p></p>", ru: "<p></p>", lt: "<p></p>" },
     image: "",
     mosqueIds: mosqueId ? [mosqueId] : [],
-    eventDate: localDateTime(),
+    eventDate,
     endDate: "",
     locationType: "mosque",
     locationMosqueId: mosqueId,
@@ -134,6 +134,7 @@ export default function EventsPage() {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const createHandled = useRef(false);
 
   const mosqueNames = useMemo(() => new Map(mosques.map((mosque) => [mosque.id, mosque.name])), [mosques]);
 
@@ -143,7 +144,11 @@ export default function EventsPage() {
         setMosques(data.items);
         if (!mosqueId && data.items[0]) {
           setMosqueId(data.items[0].id);
-          setSearchParams({ mosqueId: data.items[0].id }, { replace: true });
+          setSearchParams((current) => {
+            const next = new URLSearchParams(current);
+            next.set("mosqueId", data.items[0].id);
+            return next;
+          }, { replace: true });
         }
       })
       .catch((requestError: any) => setError(requestError.response?.data?.message ?? "Mosques could not be loaded."));
@@ -168,8 +173,14 @@ export default function EventsPage() {
   function openCreate() {
     setActiveLang("en");
     setError("");
-    setEditing(emptyEvent(mosqueId));
+    setEditing(emptyEvent(mosqueId, searchParams.get("eventDate") ?? localDateTime()));
   }
+
+  useEffect(() => {
+    if (createHandled.current || searchParams.get("create") !== "1" || !mosqueId) return;
+    createHandled.current = true;
+    openCreate();
+  }, [mosqueId, searchParams]);
 
   function validate(item: EventItem) {
     if (!item.mosqueIds.length) return "Select at least one audience mosque.";
